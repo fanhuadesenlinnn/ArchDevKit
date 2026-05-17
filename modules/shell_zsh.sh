@@ -67,22 +67,22 @@ render_zshrc() {
     return 0
   fi
 
-  cat > "${HOME}/.zshrc" <<'EOF'
+  cat > "${HOME}/.zshrc" <<EOF
 # ArchDevKit 生成的 zsh 配置
 # 如需修改主题或插件，建议先备份该文件。
 
-export ZSH="${HOME}/.oh-my-zsh"
+export ZSH="\${HOME}/.oh-my-zsh"
 
-ZSH_THEME="powerlevel10k/powerlevel10k"
+ZSH_THEME="${ZSH_THEME_NAME:-powerlevel10k/powerlevel10k}"
 
-plugins=(git zsh-autosuggestions zsh-syntax-highlighting fzf docker kubectl)
+plugins=(${ZSH_PLUGINS:-git zsh-autosuggestions zsh-syntax-highlighting fzf docker kubectl})
 
-source "${ZSH}/oh-my-zsh.sh"
+source "\${ZSH}/oh-my-zsh.sh"
 
-[[ -f "${HOME}/.p10k.zsh" ]] && source "${HOME}/.p10k.zsh"
+[[ -f "\${HOME}/.p10k.zsh" ]] && source "\${HOME}/.p10k.zsh"
 
 if command -v mise >/dev/null 2>&1; then
-  eval "$(mise activate zsh)"
+  eval "\$(mise activate zsh)"
 fi
 
 if [[ -f /usr/share/fzf/key-bindings.zsh ]]; then

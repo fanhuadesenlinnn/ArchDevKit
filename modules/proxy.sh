@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Proxy 模块
-# 负责安装 Mihomo / sing-box 代理核心，可选安装 MetaCubeXD 面板，并生成用户级 systemd 服务。
+# 负责安装 Mihomo / sing-box 代理核心，可选安装 MetaCubeXD 面板静态文件，并生成用户级 systemd 服务。
 
 proxy_service_name() {
   case "${PROXY_CORE:-mihomo}" in
@@ -43,6 +43,91 @@ proxy_config_source_to_file() {
   rm -f "${tmp_file}"
 }
 
+is_default_mihomo_config_source() {
+  [[ "${MIHOMO_CONFIG_SOURCE:-}" == "${SCRIPT_DIR}/files/mihomo/config.yaml" ]]
+}
+
+bool_to_yaml() {
+  case "${1:-0}" in
+    1|true|yes|on) printf "true" ;;
+    *) printf "false" ;;
+  esac
+}
+
+quote_yaml_string() {
+  local value="$1"
+  value="${value//\\/\\\\}"
+  value="${value//\"/\\\"}"
+  printf '"%s"' "${value}"
+}
+
+render_default_mihomo_config() {
+  local source="${SCRIPT_DIR}/files/mihomo/config.yaml"
+  local target="$1"
+  local tmp_file allow_lan secret external_ui
+
+  [[ -f "${source}" ]] || die "默认 Mihomo 配置不存在：${source}"
+  [[ -n "${target}" ]] || die "Mihomo 配置目标为空"
+
+  mkdir -p "$(dirname "${target}")"
+  allow_lan="$(bool_to_yaml "${MIHOMO_ALLOW_LAN:-0}")"
+  secret="$(quote_yaml_string "${MIHOMO_SECRET:-}")"
+  external_ui="${METACUBEXD_WEB_ROOT:-/usr/share/metacubexd}"
+
+  if [[ "${DRY_RUN:-0}" -eq 1 ]]; then
+    echo "+ render ${source} -> ${target}"
+    return 0
+  fi
+
+  tmp_file="$(mktemp)"
+  awk \
+    -v mixed_port="${MIHOMO_MIXED_PORT:-7890}" \
+    -v allow_lan="${allow_lan}" \
+    -v bind_address="${MIHOMO_BIND_ADDRESS:-127.0.0.1}" \
+    -v controller_host="${MIHOMO_CONTROLLER_HOST:-127.0.0.1}" \
+    -v controller_port="${MIHOMO_CONTROLLER_PORT:-9090}" \
+    -v dns_listen="${MIHOMO_DNS_LISTEN:-127.0.0.1:1053}" \
+    -v secret="${secret}" \
+    -v enable_ui="${ENABLE_METACUBEXD:-0}" \
+    -v external_ui="${external_ui}" '
+      BEGIN { in_dns=0; ui_written=0 }
+      /^dns:/ { in_dns=1; print; next }
+      /^[^[:space:]][^:]*:/ && $0 !~ /^dns:/ { in_dns=0 }
+      /^mixed-port:/ { print "mixed-port: " mixed_port; next }
+      /^allow-lan:/ { print "allow-lan: " allow_lan; next }
+      /^bind-address:/ { print "bind-address: \"" bind_address "\""; next }
+      /^external-controller:/ {
+        print "external-controller: " controller_host ":" controller_port
+        next
+      }
+      /^external-ui:/ {
+        if (enable_ui == 1) {
+          print "external-ui: " external_ui
+          ui_written=1
+        }
+        next
+      }
+      /^secret:/ { print "secret: " secret; next }
+      in_dns && /^  listen:/ { print "  listen: " dns_listen; next }
+      { print }
+      END {
+        if (enable_ui == 1 && ui_written == 0) {
+          print "external-ui: " external_ui
+        }
+      }
+    ' "${source}" > "${tmp_file}"
+
+  backup_path "${target}"
+  install -m 0600 "${tmp_file}" "${target}"
+  rm -f "${tmp_file}"
+}
+
+mihomo_config_has_placeholder_subscription() {
+  local config_file="$1"
+  [[ -f "${config_file}" ]] || return 1
+  grep -Fq "https://example.com/your-subscription-url" "${config_file}"
+}
+
 install_proxy_env() {
   if is_done "proxy"; then
     log_info "Proxy 环境已处理，跳过"
@@ -58,7 +143,6 @@ install_proxy_env() {
       configure_mihomo
       if [[ "${ENABLE_METACUBEXD:-0}" -eq 1 ]]; then
         install_metacubexd
-        configure_metacubexd_service
       fi
       ;;
     sing-box)
@@ -90,7 +174,10 @@ configure_mihomo() {
   local service_file="${service_dir}/archdevkit-mihomo.service"
 
   log_info "配置 Mihomo：${config_file}"
-  if proxy_config_source_to_file "${MIHOMO_CONFIG_SOURCE:-}" "${config_file}"; then
+  mkdir -p "${config_dir}" "${config_dir}/providers" "${config_dir}/ruleset"
+  if is_default_mihomo_config_source; then
+    render_default_mihomo_config "${config_file}"
+  elif proxy_config_source_to_file "${MIHOMO_CONFIG_SOURCE:-}" "${config_file}"; then
     :
   else
     write_default_mihomo_config "${config_file}"
@@ -170,35 +257,14 @@ install_metacubexd() {
   local package="${METACUBEXD_PACKAGE:-metacubexd-bin}"
   log_info "安装 MetaCubeXD 面板：${package}"
   install_package_or_aur "${package}"
-  pacman_install python
-}
 
-configure_metacubexd_service() {
-  local service_dir="${HOME}/.config/systemd/user"
-  local service_file="${service_dir}/archdevkit-metacubexd.service"
-
-  mkdir -p "${service_dir}"
   if [[ "${DRY_RUN:-0}" -eq 1 ]]; then
-    echo "+ write ${service_file}"
+    echo "+ test -f ${METACUBEXD_WEB_ROOT:-/usr/share/metacubexd}/index.html"
     return 0
   fi
 
-  backup_path "${service_file}"
-  cat > "${service_file}" <<EOF
-[Unit]
-Description=ArchDevKit MetaCubeXD Dashboard
-After=network-online.target
-Wants=network-online.target
-
-[Service]
-Type=simple
-ExecStart=/usr/bin/python -m http.server ${METACUBEXD_PORT:-9097} --bind ${METACUBEXD_BIND:-127.0.0.1} --directory ${METACUBEXD_WEB_ROOT:-/usr/share/metacubexd}
-Restart=on-failure
-RestartSec=3
-
-[Install]
-WantedBy=default.target
-EOF
+  [[ -f "${METACUBEXD_WEB_ROOT:-/usr/share/metacubexd}/index.html" ]] || \
+    log_warn "未找到 MetaCubeXD 静态入口：${METACUBEXD_WEB_ROOT:-/usr/share/metacubexd}/index.html，请检查面板包安装路径"
 }
 
 install_sing_box() {
@@ -306,11 +372,13 @@ enable_proxy_service_if_needed() {
     return 0
   }
 
-  enable_user_service "$(proxy_service_name)"
-
-  if [[ "${PROXY_CORE:-mihomo}" == "mihomo" && "${ENABLE_METACUBEXD:-0}" -eq 1 ]]; then
-    enable_user_service "archdevkit-metacubexd.service"
+  if [[ "${PROXY_CORE:-mihomo}" == "mihomo" ]] && mihomo_config_has_placeholder_subscription "${MIHOMO_CONFIG_FILE:-${HOME}/.config/mihomo/config.yaml}"; then
+    log_warn "检测到默认 Mihomo 配置仍使用示例订阅地址，已跳过自动启动服务"
+    log_warn "请先替换 proxy-providers.all-proxies.url，或使用 --mihomo-config 指定自己的配置"
+    return 0
   fi
+
+  enable_user_service "$(proxy_service_name)"
 }
 
 verify_proxy_env() {
@@ -321,7 +389,7 @@ verify_proxy_env() {
       log_info "Mihomo mixed-port：127.0.0.1:${MIHOMO_MIXED_PORT:-7890}"
       log_info "Mihomo 控制接口：http://${MIHOMO_CONTROLLER_HOST:-127.0.0.1}:${MIHOMO_CONTROLLER_PORT:-9090}"
       if [[ "${ENABLE_METACUBEXD:-0}" -eq 1 ]]; then
-        log_info "MetaCubeXD 面板：http://${METACUBEXD_BIND:-127.0.0.1}:${METACUBEXD_PORT:-9097}"
+        log_info "MetaCubeXD 面板由 Mihomo 托管：http://${MIHOMO_CONTROLLER_HOST:-127.0.0.1}:${MIHOMO_CONTROLLER_PORT:-9090}/ui/"
       fi
       ;;
     sing-box)

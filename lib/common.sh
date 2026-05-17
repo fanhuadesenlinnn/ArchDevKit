@@ -10,7 +10,12 @@ die()       { log_error "$*"; exit 1; }
 
 need_cmd() { command -v "$1" >/dev/null 2>&1; }
 require_cmd() { need_cmd "$1" || die "缺少命令：$1"; }
-require_arch() { [[ -f /etc/arch-release ]] && need_cmd pacman || die "当前脚本只支持 Arch Linux / Arch 系发行版"; }
+require_arch() {
+  if [[ -f /etc/arch-release ]] && need_cmd pacman; then
+    return 0
+  fi
+  die "当前脚本只支持 Arch Linux / Arch 系发行版"
+}
 require_normal_user() { [[ "${EUID}" -ne 0 ]] || die "请使用普通用户执行脚本，不要直接使用 root 或 sudo 执行"; }
 
 bool_text() {
@@ -115,7 +120,8 @@ backup_path() {
   local path="$1"
   [[ -n "${path}" ]] || die "备份路径为空"
   [[ -e "${path}" || -L "${path}" ]] || return 0
-  local bak="${path}.bak.$(date +%Y%m%d-%H%M%S)"
+  local bak
+  bak="${path}.bak.$(date +%Y%m%d-%H%M%S)"
   mv "${path}" "${bak}"
   log_warn "已备份：${path} -> ${bak}"
 }
@@ -124,7 +130,8 @@ backup_file_root() {
   local file="$1"
   [[ -n "${file}" ]] || die "备份文件路径为空"
   [[ -e "${file}" ]] || return 0
-  local bak="${file}.bak.$(date +%Y%m%d-%H%M%S)"
+  local bak
+  bak="${file}.bak.$(date +%Y%m%d-%H%M%S)"
   run_sudo cp -a "${file}" "${bak}"
   log_warn "已备份：${file} -> ${bak}"
 }

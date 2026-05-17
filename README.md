@@ -156,20 +156,23 @@ bash install.sh workstation --with-proxy
 bash install.sh proxy --proxy-core sing-box
 ```
 
-使用自己的配置文件或订阅 URL：
+默认 Mihomo 配置来自 `files/mihomo/config.yaml`，基于日常大陆网络、AI 服务、流媒体、GitHub、游戏平台、广告拦截和懒猫微服兼容整理。首次使用只需要替换其中的 `proxy-providers.all-proxies.url`。
+
+使用自己的配置文件或订阅 URL 覆盖默认模板：
 
 ```bash
 bash install.sh proxy --mihomo-config /path/to/config.yaml
 bash install.sh proxy --sing-box-config /path/to/config.json
 ```
 
-默认配置不会写入任何节点或密钥，只生成 DIRECT 基础模板，方便先把服务跑起来，再替换为自己的配置。
+默认配置不会写入任何真实节点、订阅 token 或密钥，仓库里只保留示例订阅地址。
+如果脚本检测到仍在使用示例订阅地址，会跳过自动启动 Mihomo 服务，避免启动一个不可用的代理环境。
 
 安装后常用地址：
 
 - Mihomo mixed-port：`127.0.0.1:7890`
 - Mihomo 控制接口：`http://127.0.0.1:9090`
-- MetaCubeXD 面板：`http://127.0.0.1:9097`
+- MetaCubeXD 面板：`http://127.0.0.1:9090/ui/`
 
 ## 设计原则
 

@@ -4,7 +4,9 @@
 
 setup_mise_shell() {
   log_info "配置 mise shell 初始化"
+  # shellcheck disable=SC2016
   append_unique_line 'eval "$(mise activate bash)"' "${HOME}/.bashrc"
+  # shellcheck disable=SC2016
   append_unique_line 'eval "$(mise activate zsh)"' "${HOME}/.zshrc"
   log_warn "mise 初始化已写入 ~/.bashrc 和 ~/.zshrc，重新打开终端后完全生效"
 }

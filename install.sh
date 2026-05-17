@@ -166,9 +166,14 @@ show_config() {
   echo "Mihomo 包:            ${MIHOMO_PACKAGE}"
   echo "Mihomo 配置来源:      ${MIHOMO_CONFIG_SOURCE:-生成基础模板}"
   echo "Mihomo mixed-port:    ${MIHOMO_MIXED_PORT}"
+  echo "Mihomo allow-lan:     $(bool_text "${MIHOMO_ALLOW_LAN}")"
+  echo "Mihomo bind-address:  ${MIHOMO_BIND_ADDRESS}"
   echo "Mihomo 控制接口:      http://${MIHOMO_CONTROLLER_HOST}:${MIHOMO_CONTROLLER_PORT}"
-  echo "MetaCubeXD:           $(bool_text "${ENABLE_METACUBEXD}")"
-  echo "MetaCubeXD 地址:      http://${METACUBEXD_BIND}:${METACUBEXD_PORT}"
+  echo "Mihomo DNS 监听:      ${MIHOMO_DNS_LISTEN}"
+  if [[ "${PROXY_CORE:-mihomo}" == "mihomo" ]]; then
+    echo "MetaCubeXD:           $(bool_text "${ENABLE_METACUBEXD}")"
+    echo "MetaCubeXD 地址:      http://${MIHOMO_CONTROLLER_HOST}:${MIHOMO_CONTROLLER_PORT}/ui/"
+  fi
   echo "sing-box 包:          ${SING_BOX_PACKAGE}"
   echo "sing-box 配置来源:    ${SING_BOX_CONFIG_SOURCE:-生成基础模板}"
   echo "sing-box mixed-port:  ${SING_BOX_MIXED_PORT}"
@@ -211,7 +216,9 @@ modules_for_command() {
       ;;
     dev) echo "base git runtime nvim docker" ;;
     workstation)
-      local modules="base archlinuxcn git runtime nvim docker fonts shell desktop"
+      local modules="base"
+      [[ "${INSTALL_ARCHLINUXCN:-0}" -eq 1 ]] && modules="${modules} archlinuxcn"
+      modules="${modules} git runtime nvim docker fonts shell desktop"
       [[ "${ENABLE_PROXY:-0}" -eq 1 ]] && modules="${modules} proxy"
       echo "${modules}"
       ;;
