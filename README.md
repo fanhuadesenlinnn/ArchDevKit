@@ -100,6 +100,19 @@ bash install.sh nvim --github-proxy https://gh-proxy.com/
 --no-sddm                 不启用 SDDM
 --nvidia                  安装 NVIDIA Wayland 相关包
 --monaco                  安装 Monaco 字体
+--browser-package NAME    指定桌面浏览器安装包
+--browser-app COMMAND     指定桌面浏览器启动命令
+--rime-schema NAME        指定 Rime 默认方案
+```
+
+## 桌面默认值
+
+Hyprland 桌面默认安装 Google Chrome，不安装 Firefox。默认浏览器包为 `google-chrome`，启动命令为 `google-chrome-stable`；如果当前 pacman 源没有该包，脚本会先尝试按配置启用 `archlinuxcn`，仍不可用时再从 AUR 构建。
+
+中文输入法默认使用 Fcitx5 + Rime，默认方案为 `luna_pinyin_simp`。可通过 `install_vars` 或参数覆盖：
+
+```bash
+bash install.sh desktop --browser-package google-chrome --browser-app google-chrome-stable --rime-schema luna_pinyin_simp
 ```
 
 ## 设计原则

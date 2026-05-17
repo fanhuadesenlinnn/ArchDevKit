@@ -13,9 +13,11 @@ install_desktop_hyprland() {
 
   log_info "开始安装 Hyprland 桌面环境"
   install_hyprland_packages
+  install_browser_package
   install_gpu_packages_if_needed
   enable_desktop_services
   configure_fcitx5_env
+  configure_rime_if_needed
   generate_hyprland_config
   enable_sddm_if_needed
   verify_hyprland
@@ -35,8 +37,92 @@ install_hyprland_packages() {
     mako hyprlock hypridle hyprpaper \
     grim slurp wl-clipboard brightnessctl playerctl pavucontrol \
     network-manager-applet blueman polkit-kde-agent \
-    fcitx5-im fcitx5-chinese-addons fcitx5-configtool \
-    firefox sddm
+    sddm
+
+  install_input_method_packages
+}
+
+install_input_method_packages() {
+  [[ "${ENABLE_FCITX5:-0}" -eq 1 ]] || {
+    log_warn "当前配置未启用 Fcitx5，跳过输入法包安装"
+    return 0
+  }
+
+  case "${INPUT_METHOD_ENGINE:-rime}" in
+    rime)
+      pacman_install fcitx5-im fcitx5-configtool fcitx5-rime rime-luna-pinyin
+      ;;
+    *)
+      die "暂不支持的输入法引擎：${INPUT_METHOD_ENGINE}"
+      ;;
+  esac
+}
+
+pacman_package_available() {
+  local package="$1"
+  pacman -Si "${package}" >/dev/null 2>&1
+}
+
+pacman_package_installed() {
+  local package="$1"
+  pacman -Q "${package}" >/dev/null 2>&1
+}
+
+install_aur_package() {
+  local package="$1" aur_url tmp_dir package_dir
+  [[ -n "${package}" ]] || die "AUR 包名为空"
+
+  aur_url="https://aur.archlinux.org/${package}.git"
+  tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/archdevkit-aur-${package}.XXXXXX")"
+  package_dir="${tmp_dir}/${package}"
+
+  log_info "从 AUR 安装：${package}"
+  if [[ "${DRY_RUN:-0}" -eq 1 ]]; then
+    echo "+ git clone ${aur_url} ${package_dir}"
+    echo "+ cd ${package_dir} && makepkg -si --needed --noconfirm"
+    rmdir "${tmp_dir}"
+    return 0
+  fi
+
+  git clone "${aur_url}" "${package_dir}" || {
+    rm -rf "${tmp_dir}"
+    die "克隆 AUR 仓库失败：${aur_url}"
+  }
+
+  (cd "${package_dir}" && makepkg -si --needed --noconfirm) || {
+    rm -rf "${tmp_dir}"
+    die "AUR 包安装失败：${package}"
+  }
+
+  rm -rf "${tmp_dir}"
+}
+
+install_browser_package() {
+  local package="${BROWSER_PACKAGE:-google-chrome}"
+  [[ -n "${package}" ]] || die "浏览器安装包为空"
+
+  if pacman_package_installed "${package}"; then
+    log_info "浏览器已安装：${package}"
+    return 0
+  fi
+
+  if [[ "${package}" == "google-chrome" && "${INSTALL_ARCHLINUXCN:-0}" -eq 1 ]] && ! pacman_package_available "${package}"; then
+    log_info "Google Chrome 不在当前 pacman 源中，先确保 archlinuxcn 源可用"
+    ensure_archlinuxcn
+  fi
+
+  if pacman_package_available "${package}"; then
+    pacman_install "${package}"
+    return 0
+  fi
+
+  if [[ "${package}" == "google-chrome" ]]; then
+    log_warn "当前 pacman 源未提供 google-chrome，改用 AUR 构建安装"
+    install_aur_package "${package}"
+    return 0
+  fi
+
+  die "当前 pacman 源未找到浏览器安装包：${package}"
 }
 
 install_gpu_packages_if_needed() {
@@ -111,6 +197,59 @@ XCURSOR_SIZE=24
 EOF
 }
 
+configure_rime_if_needed() {
+  [[ "${ENABLE_FCITX5:-0}" -eq 1 ]] || return 0
+  [[ "${INPUT_METHOD_ENGINE:-rime}" == "rime" ]] || return 0
+
+  local rime_dir="${HOME}/.local/share/fcitx5/rime"
+  local fcitx5_dir="${HOME}/.config/fcitx5"
+  local schema="${RIME_SCHEMA:-luna_pinyin_simp}"
+
+  log_info "配置 Fcitx5 默认输入法为 Rime：${schema}"
+  mkdir -p "${rime_dir}" "${fcitx5_dir}"
+
+  if [[ "${DRY_RUN:-0}" -eq 1 ]]; then
+    echo "+ write ${rime_dir}/default.custom.yaml"
+    echo "+ write ${fcitx5_dir}/profile"
+    return 0
+  fi
+
+  backup_path "${rime_dir}/default.custom.yaml"
+  backup_path "${fcitx5_dir}/profile"
+
+  cat > "${rime_dir}/default.custom.yaml" <<EOF
+patch:
+  schema_list:
+    - schema: ${schema}
+  menu/page_size: 9
+  ascii_composer/switch_key:
+    Shift_L: commit_code
+    Shift_R: inline_ascii
+EOF
+
+  cat > "${fcitx5_dir}/profile" <<'EOF'
+[Groups/0]
+Name=Default
+Default Layout=us
+DefaultIM=rime
+
+[Groups/0/Items/0]
+Name=keyboard-us
+Layout=
+
+[Groups/0/Items/1]
+Name=rime
+Layout=
+
+[GroupOrder]
+0=Default
+EOF
+}
+
+sed_escape_replacement() {
+  printf '%s' "$1" | sed -e 's/[\/&]/\\&/g'
+}
+
 generate_hyprland_config() {
   [[ "${HYPRLAND_CONFIG_MODE}" == "template" ]] || {
     log_warn "当前 Hyprland 配置模式为 ${HYPRLAND_CONFIG_MODE}，跳过模板生成"
@@ -132,14 +271,20 @@ generate_hyprland_config() {
     return 0
   fi
 
+  local browser_app terminal_app file_manager app_launcher
+  browser_app="$(sed_escape_replacement "${BROWSER_APP:-google-chrome-stable}")"
+  terminal_app="$(sed_escape_replacement "${TERMINAL_APP:-kitty}")"
+  file_manager="$(sed_escape_replacement "${FILE_MANAGER:-thunar}")"
+  app_launcher="$(sed_escape_replacement "${APP_LAUNCHER:-wofi}")"
+
   cat > "${HOME}/.config/hypr/hyprland.conf" <<'EOF'
 # ArchDevKit 生成的 Hyprland 主配置
 # 没有壁纸时不会启动 hyprpaper。
 
 $mod = SUPER
-$terminal = kitty
-$fileManager = thunar
-$menu = wofi --show drun
+$terminal = __TERMINAL_APP__
+$fileManager = __FILE_MANAGER__
+$menu = __APP_LAUNCHER__ --show drun
 
 monitor = ,preferred,auto,1
 
@@ -223,7 +368,7 @@ misc {
 bind = $mod, Return, exec, $terminal
 bind = $mod, Space, exec, $menu
 bind = $mod, E, exec, $fileManager
-bind = $mod, B, exec, firefox
+bind = $mod, B, exec, __BROWSER_APP__
 bind = $mod, Q, killactive
 bind = $mod SHIFT, Q, exit
 bind = $mod, F, fullscreen
@@ -276,6 +421,13 @@ windowrulev2 = float,class:^(blueman-manager)$
 windowrulev2 = float,class:^(nm-connection-editor)$
 windowrulev2 = float,class:^(fcitx5-config-qt)$
 EOF
+
+  sed -i \
+    -e "s/__TERMINAL_APP__/${terminal_app}/g" \
+    -e "s/__FILE_MANAGER__/${file_manager}/g" \
+    -e "s/__APP_LAUNCHER__/${app_launcher}/g" \
+    -e "s/__BROWSER_APP__/${browser_app}/g" \
+    "${HOME}/.config/hypr/hyprland.conf"
 
   cat > "${HOME}/.config/waybar/config" <<'EOF'
 {
@@ -347,6 +499,8 @@ verify_hyprland() {
   log_info "验证 Hyprland 关键命令"
   run_cmd Hyprland --version || true
   run_cmd waybar --version || true
+  run_cmd "${BROWSER_APP:-google-chrome-stable}" --version || true
+  run_cmd fcitx5 --version || true
 }
 
 ensure_desktop_hyprland() {

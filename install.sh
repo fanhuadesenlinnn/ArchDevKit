@@ -45,6 +45,9 @@ ArchDevKit - Arch Linux 工作站初始化工具
   --no-sddm                 不启用 SDDM
   --nvidia                  安装 NVIDIA Wayland 相关包
   --monaco                  安装 Monaco 字体
+  --browser-package NAME    指定桌面浏览器安装包
+  --browser-app COMMAND     指定桌面浏览器启动命令
+  --rime-schema NAME        指定 Rime 默认方案
 EOF
 }
 
@@ -79,6 +82,12 @@ parse_args() {
       --gpu=*) GPU_TYPE="${1#*=}"; shift ;;
       --monaco) INSTALL_MONACO_FONT=1; shift ;;
       --no-monaco) INSTALL_MONACO_FONT=0; shift ;;
+      --browser-package) BROWSER_PACKAGE="${2:-}"; shift 2 ;;
+      --browser-package=*) BROWSER_PACKAGE="${1#*=}"; shift ;;
+      --browser-app) BROWSER_APP="${2:-}"; shift 2 ;;
+      --browser-app=*) BROWSER_APP="${1#*=}"; shift ;;
+      --rime-schema) RIME_SCHEMA="${2:-}"; INPUT_METHOD_ENGINE="rime"; shift 2 ;;
+      --rime-schema=*) RIME_SCHEMA="${1#*=}"; INPUT_METHOD_ENGINE="rime"; shift ;;
       --no-p10k) INSTALL_POWERLEVEL10K=0; INSTALL_P10K_CONFIG=0; shift ;;
       --p10k) INSTALL_POWERLEVEL10K=1; INSTALL_P10K_CONFIG=1; shift ;;
       --set-zsh-default) SET_ZSH_AS_DEFAULT=1; shift ;;
@@ -127,6 +136,11 @@ show_config() {
   echo "Docker 镜像源:        $(bool_text "${CONFIGURE_DOCKER_MIRRORS}")"
   echo "Hyprland SDDM:        $(bool_text "${ENABLE_SDDM}")"
   echo "GPU 类型:             ${GPU_TYPE}"
+  echo "浏览器安装包:         ${BROWSER_PACKAGE}"
+  echo "浏览器启动命令:       ${BROWSER_APP}"
+  echo "输入法框架:           Fcitx5 $(bool_text "${ENABLE_FCITX5}")"
+  echo "输入法引擎:           ${INPUT_METHOD_ENGINE}"
+  echo "Rime 默认方案:        ${RIME_SCHEMA}"
   echo "----------------------------------------------------------"
 }
 
@@ -155,7 +169,13 @@ modules_for_command() {
     docker) echo "base docker" ;;
     fonts) echo "base fonts" ;;
     shell|zsh) echo "base fonts shell" ;;
-    desktop|hyprland) echo "base fonts desktop" ;;
+    desktop|hyprland)
+      if [[ "${INSTALL_ARCHLINUXCN:-0}" -eq 1 && "${BROWSER_PACKAGE:-}" == "google-chrome" ]]; then
+        echo "base archlinuxcn fonts desktop"
+      else
+        echo "base fonts desktop"
+      fi
+      ;;
     dev) echo "base git runtime nvim docker" ;;
     workstation) echo "base archlinuxcn git runtime nvim docker fonts shell desktop" ;;
     *) echo "$1" ;;
@@ -185,6 +205,8 @@ show_plan() {
   echo "  Neovim 实际下载:  $(github_proxy_url "${NVIM_REPO}")"
   echo "  Powerlevel10k:    $(bool_text "${INSTALL_POWERLEVEL10K}")"
   echo "  Hyprland SDDM:    $(bool_text "${ENABLE_SDDM}")"
+  echo "  浏览器:           ${BROWSER_DISPLAY_NAME:-${BROWSER_APP}} (${BROWSER_PACKAGE})"
+  echo "  输入法:           Fcitx5 + ${INPUT_METHOD_ENGINE} (${RIME_SCHEMA})"
   echo "----------------------------------------------------------"
 }
 
