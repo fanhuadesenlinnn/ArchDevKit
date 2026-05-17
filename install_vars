@@ -1,0 +1,98 @@
+#!/usr/bin/env bash
+# ArchDevKit 默认配置
+# 修改这里可以改变交互式和参数式安装的默认行为。
+
+# =========================
+# 全局行为
+# =========================
+ASSUME_YES=0
+DRY_RUN=0
+
+# =========================
+# 中国大陆网络默认配置
+# =========================
+ENABLE_CHINA_MIRROR=1
+ENABLE_GITHUB_PROXY=1
+GITHUB_PROXY="https://hubproxy.babadafafafafa.cn/"
+
+NPM_REGISTRY="https://registry.npmmirror.com"
+PIP_INDEX_URL="https://pypi.tuna.tsinghua.edu.cn/simple"
+PIP_TRUSTED_HOST="pypi.tuna.tsinghua.edu.cn"
+
+# =========================
+# archlinuxcn
+# =========================
+INSTALL_ARCHLINUXCN=1
+ARCHLINUXCN_SERVER='https://repo.archlinuxcn.org/$arch'
+INSTALL_ARCHLINUXCN_MIRRORLIST=1
+
+# =========================
+# Runtime：mise 统一管理开发语言版本
+# =========================
+RUNTIME_MANAGER="mise"
+NODE_VERSION="22"
+NPM_VERSION="11"
+PYTHON_VERSION="3.13"
+GO_VERSION="1.23"
+INSTALL_PYNVIM=1
+ENABLE_COREPACK=1
+
+# =========================
+# Neovim
+# =========================
+NVIM_REPO="https://github.com/fanhuadesenlinnn/nvim.git"
+NVIM_BRANCH=""
+NVIM_CONFIG_DIR="${HOME}/.config/nvim"
+SYNC_NVIM_PLUGINS=1
+
+# =========================
+# Zsh / Oh My Zsh / Powerlevel10k
+# =========================
+INSTALL_OH_MY_ZSH=1
+INSTALL_POWERLEVEL10K=1
+INSTALL_P10K_CONFIG=1
+SET_ZSH_AS_DEFAULT=1
+
+OH_MY_ZSH_REPO="https://github.com/ohmyzsh/ohmyzsh.git"
+ZSH_AUTOSUGGESTIONS_REPO="https://github.com/zsh-users/zsh-autosuggestions.git"
+ZSH_SYNTAX_HIGHLIGHTING_REPO="https://github.com/zsh-users/zsh-syntax-highlighting.git"
+POWERLEVEL10K_REPO="https://github.com/romkatv/powerlevel10k.git"
+
+ZSH_THEME_NAME="powerlevel10k/powerlevel10k"
+ZSH_PLUGINS="git zsh-autosuggestions zsh-syntax-highlighting fzf docker kubectl"
+P10K_CONFIG_SOURCE="${SCRIPT_DIR}/files/p10k.clean.zsh"
+
+# =========================
+# 字体
+# =========================
+INSTALL_CN_FONTS=1
+INSTALL_NERD_FONTS=1
+INSTALL_MONACO_FONT=0
+MONACO_FONT_URL="http://www.gringod.com/wp-upload/software/Fonts/Monaco_Linux.ttf"
+MONACO_FONT_DIR="/usr/share/fonts/truetype/Monaco"
+
+# =========================
+# Docker
+# =========================
+ENABLE_DOCKER_SERVICE=1
+ADD_USER_TO_DOCKER_GROUP=1
+CONFIGURE_DOCKER_MIRRORS=1
+DOCKER_MIRRORS=(
+  "https://docker.m.daocloud.io"
+  "https://dockerproxy.com"
+  "https://docker.1panel.live"
+)
+
+# =========================
+# Hyprland
+# =========================
+ENABLE_SDDM=1
+ENABLE_BLUETOOTH=1
+ENABLE_FCITX5=1
+GPU_TYPE="auto" # auto / intel / amd / nvidia / none
+HYPRLAND_CONFIG_MODE="template" # template / skip
+
+TERMINAL_APP="kitty"
+APP_LAUNCHER="wofi"
+FILE_MANAGER="thunar"
+BROWSER_APP="firefox"
