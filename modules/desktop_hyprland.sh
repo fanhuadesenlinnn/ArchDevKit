@@ -58,45 +58,6 @@ install_input_method_packages() {
   esac
 }
 
-pacman_package_available() {
-  local package="$1"
-  pacman -Si "${package}" >/dev/null 2>&1
-}
-
-pacman_package_installed() {
-  local package="$1"
-  pacman -Q "${package}" >/dev/null 2>&1
-}
-
-install_aur_package() {
-  local package="$1" aur_url tmp_dir package_dir
-  [[ -n "${package}" ]] || die "AUR 包名为空"
-
-  aur_url="https://aur.archlinux.org/${package}.git"
-  tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/archdevkit-aur-${package}.XXXXXX")"
-  package_dir="${tmp_dir}/${package}"
-
-  log_info "从 AUR 安装：${package}"
-  if [[ "${DRY_RUN:-0}" -eq 1 ]]; then
-    echo "+ git clone ${aur_url} ${package_dir}"
-    echo "+ cd ${package_dir} && makepkg -si --needed --noconfirm"
-    rmdir "${tmp_dir}"
-    return 0
-  fi
-
-  git clone "${aur_url}" "${package_dir}" || {
-    rm -rf "${tmp_dir}"
-    die "克隆 AUR 仓库失败：${aur_url}"
-  }
-
-  (cd "${package_dir}" && makepkg -si --needed --noconfirm) || {
-    rm -rf "${tmp_dir}"
-    die "AUR 包安装失败：${package}"
-  }
-
-  rm -rf "${tmp_dir}"
-}
-
 install_browser_package() {
   local package="${BROWSER_PACKAGE:-google-chrome}"
   [[ -n "${package}" ]] || die "浏览器安装包为空"

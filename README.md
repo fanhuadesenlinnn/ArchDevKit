@@ -18,6 +18,7 @@ ArchDevKit 是一个面向 Arch Linux 最小化安装后的工作站初始化工
 - `fonts`：中文字体、Nerd Font、可选 Monaco
 - `shell`：Zsh / Oh My Zsh / Powerlevel10k
 - `desktop`：Hyprland 桌面环境
+- `proxy`：Mihomo / sing-box 代理核心，可选 MetaCubeXD 面板
 - `dev`：开发环境组合
 - `workstation`：完整工作站组合
 
@@ -54,6 +55,12 @@ bash install.sh nvim
 
 ```bash
 bash install.sh desktop
+```
+
+只安装 Proxy：
+
+```bash
+bash install.sh proxy
 ```
 
 查看当前配置：
@@ -103,6 +110,12 @@ bash install.sh nvim --github-proxy https://gh-proxy.com/
 --browser-package NAME    指定桌面浏览器安装包
 --browser-app COMMAND     指定桌面浏览器启动命令
 --rime-schema NAME        指定 Rime 默认方案
+--with-proxy              workstation 中安装 Proxy 模块
+--no-proxy                workstation 中不安装 Proxy 模块
+--proxy-core NAME         指定代理核心：mihomo / sing-box
+--no-metacubexd           不安装 MetaCubeXD 面板
+--mihomo-config PATH/URL  指定 Mihomo 配置文件或 URL
+--sing-box-config PATH/URL 指定 sing-box 配置文件或 URL
 ```
 
 ## 桌面默认值
@@ -114,6 +127,49 @@ Hyprland 桌面默认安装 Google Chrome，不安装 Firefox。默认浏览器�
 ```bash
 bash install.sh desktop --browser-package google-chrome --browser-app google-chrome-stable --rime-schema luna_pinyin_simp
 ```
+
+## Proxy 模块
+
+Proxy 是可选模块，默认配置为：
+
+```bash
+ENABLE_PROXY=0 # 1=随 workstation 安装，0=不随 workstation 安装；直接执行 proxy 命令不受此项限制
+PROXY_CORE="mihomo" # mihomo / sing-box
+ENABLE_METACUBEXD=1 # 1=安装 MetaCubeXD 面板，0=不安装面板
+```
+
+单独安装默认 Mihomo + MetaCubeXD：
+
+```bash
+bash install.sh proxy
+```
+
+安装完整工作站时顺带安装 Proxy：
+
+```bash
+bash install.sh workstation --with-proxy
+```
+
+切换为 sing-box：
+
+```bash
+bash install.sh proxy --proxy-core sing-box
+```
+
+使用自己的配置文件或订阅 URL：
+
+```bash
+bash install.sh proxy --mihomo-config /path/to/config.yaml
+bash install.sh proxy --sing-box-config /path/to/config.json
+```
+
+默认配置不会写入任何节点或密钥，只生成 DIRECT 基础模板，方便先把服务跑起来，再替换为自己的配置。
+
+安装后常用地址：
+
+- Mihomo mixed-port：`127.0.0.1:7890`
+- Mihomo 控制接口：`http://127.0.0.1:9090`
+- MetaCubeXD 面板：`http://127.0.0.1:9097`
 
 ## 设计原则
 

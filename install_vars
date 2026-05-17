@@ -99,3 +99,31 @@ FILE_MANAGER="thunar"
 BROWSER_PACKAGE="google-chrome"
 BROWSER_APP="google-chrome-stable"
 BROWSER_DISPLAY_NAME="Google Chrome"
+
+# =========================
+# Proxy：代理核心和面板（可选）
+# =========================
+ENABLE_PROXY=0 # 1=随 workstation 安装，0=不随 workstation 安装；直接执行 proxy 命令不受此项限制
+PROXY_CORE="mihomo" # mihomo / sing-box
+PROXY_AUTO_ENABLE_SERVICE=1 # 1=安装后启用并启动用户服务，0=只安装和生成配置
+
+MIHOMO_PACKAGE="mihomo"
+MIHOMO_CONFIG_DIR="${HOME}/.config/mihomo"
+MIHOMO_CONFIG_FILE="${MIHOMO_CONFIG_DIR}/config.yaml"
+MIHOMO_CONFIG_SOURCE="" # 本地 config.yaml 或 URL；为空则生成 DIRECT 基础模板
+MIHOMO_MIXED_PORT=7890
+MIHOMO_CONTROLLER_HOST="127.0.0.1"
+MIHOMO_CONTROLLER_PORT=9090
+MIHOMO_SECRET=""
+
+ENABLE_METACUBEXD=1 # 1=安装 MetaCubeXD 面板，0=不安装面板
+METACUBEXD_PACKAGE="metacubexd-bin"
+METACUBEXD_BIND="127.0.0.1"
+METACUBEXD_PORT=9097
+METACUBEXD_WEB_ROOT="/usr/share/metacubexd"
+
+SING_BOX_PACKAGE="sing-box"
+SING_BOX_CONFIG_DIR="${HOME}/.config/sing-box"
+SING_BOX_CONFIG_FILE="${SING_BOX_CONFIG_DIR}/config.json"
+SING_BOX_CONFIG_SOURCE="" # 本地 config.json 或 URL；为空则生成 DIRECT 基础模板
+SING_BOX_MIXED_PORT=7890

@@ -52,6 +52,65 @@ pacman_install() {
   run_sudo pacman -S --needed --noconfirm "$@"
 }
 
+pacman_package_available() {
+  local package="$1"
+  pacman -Si "${package}" >/dev/null 2>&1
+}
+
+pacman_package_installed() {
+  local package="$1"
+  pacman -Q "${package}" >/dev/null 2>&1
+}
+
+install_aur_package() {
+  local package="$1" aur_url tmp_dir package_dir
+  [[ -n "${package}" ]] || die "AUR 包名为空"
+
+  require_cmd git
+  require_cmd makepkg
+
+  aur_url="https://aur.archlinux.org/${package}.git"
+  tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/archdevkit-aur-${package}.XXXXXX")"
+  package_dir="${tmp_dir}/${package}"
+
+  log_info "从 AUR 安装：${package}"
+  if [[ "${DRY_RUN:-0}" -eq 1 ]]; then
+    echo "+ git clone ${aur_url} ${package_dir}"
+    echo "+ cd ${package_dir} && makepkg -si --needed --noconfirm"
+    rmdir "${tmp_dir}"
+    return 0
+  fi
+
+  git clone "${aur_url}" "${package_dir}" || {
+    rm -rf "${tmp_dir}"
+    die "克隆 AUR 仓库失败：${aur_url}"
+  }
+
+  (cd "${package_dir}" && makepkg -si --needed --noconfirm) || {
+    rm -rf "${tmp_dir}"
+    die "AUR 包安装失败：${package}"
+  }
+
+  rm -rf "${tmp_dir}"
+}
+
+install_package_or_aur() {
+  local package="$1"
+  [[ -n "${package}" ]] || die "软件包名为空"
+
+  if pacman_package_installed "${package}"; then
+    log_info "软件包已安装：${package}"
+    return 0
+  fi
+
+  if pacman_package_available "${package}"; then
+    pacman_install "${package}"
+  else
+    log_warn "当前 pacman 源未提供 ${package}，改用 AUR 构建安装"
+    install_aur_package "${package}"
+  fi
+}
+
 backup_path() {
   local path="$1"
   [[ -n "${path}" ]] || die "备份路径为空"

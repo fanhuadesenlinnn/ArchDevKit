@@ -17,6 +17,7 @@ source "${SCRIPT_DIR}/modules/docker.sh"
 source "${SCRIPT_DIR}/modules/fonts.sh"
 source "${SCRIPT_DIR}/modules/shell_zsh.sh"
 source "${SCRIPT_DIR}/modules/desktop_hyprland.sh"
+source "${SCRIPT_DIR}/modules/proxy.sh"
 
 COMMAND="menu"
 
@@ -27,7 +28,7 @@ ArchDevKit - Arch Linux 工作站初始化工具
 用法：
   bash install.sh
   bash install.sh config
-  bash install.sh base|archlinuxcn|git|runtime|nvim|docker|fonts|shell|desktop|dev|workstation
+  bash install.sh base|archlinuxcn|git|runtime|nvim|docker|fonts|shell|desktop|proxy|dev|workstation
 
 常用参数：
   -y, --yes                 自动确认
@@ -48,13 +49,19 @@ ArchDevKit - Arch Linux 工作站初始化工具
   --browser-package NAME    指定桌面浏览器安装包
   --browser-app COMMAND     指定桌面浏览器启动命令
   --rime-schema NAME        指定 Rime 默认方案
+  --with-proxy              workstation 中安装 Proxy 模块
+  --no-proxy                workstation 中不安装 Proxy 模块
+  --proxy-core NAME         指定代理核心：mihomo / sing-box
+  --no-metacubexd           不安装 MetaCubeXD 面板
+  --mihomo-config PATH/URL  指定 Mihomo 配置文件或 URL
+  --sing-box-config PATH/URL 指定 sing-box 配置文件或 URL
 EOF
 }
 
 parse_args() {
   while [[ $# -gt 0 ]]; do
     case "$1" in
-      base|archlinuxcn|git|runtime|nvim|docker|fonts|shell|zsh|desktop|hyprland|dev|workstation|config|menu|help)
+      base|archlinuxcn|git|runtime|nvim|docker|fonts|shell|zsh|desktop|hyprland|proxy|dev|workstation|config|menu|help)
         COMMAND="$1"; shift ;;
       -y|--yes) ASSUME_YES=1; shift ;;
       --dry-run) DRY_RUN=1; shift ;;
@@ -88,6 +95,16 @@ parse_args() {
       --browser-app=*) BROWSER_APP="${1#*=}"; shift ;;
       --rime-schema) RIME_SCHEMA="${2:-}"; INPUT_METHOD_ENGINE="rime"; shift 2 ;;
       --rime-schema=*) RIME_SCHEMA="${1#*=}"; INPUT_METHOD_ENGINE="rime"; shift ;;
+      --with-proxy) ENABLE_PROXY=1; shift ;;
+      --no-proxy) ENABLE_PROXY=0; shift ;;
+      --proxy-core) PROXY_CORE="${2:-mihomo}"; ENABLE_PROXY=1; shift 2 ;;
+      --proxy-core=*) PROXY_CORE="${1#*=}"; ENABLE_PROXY=1; shift ;;
+      --metacubexd) ENABLE_METACUBEXD=1; shift ;;
+      --no-metacubexd) ENABLE_METACUBEXD=0; shift ;;
+      --mihomo-config) MIHOMO_CONFIG_SOURCE="${2:-}"; PROXY_CORE="mihomo"; ENABLE_PROXY=1; shift 2 ;;
+      --mihomo-config=*) MIHOMO_CONFIG_SOURCE="${1#*=}"; PROXY_CORE="mihomo"; ENABLE_PROXY=1; shift ;;
+      --sing-box-config) SING_BOX_CONFIG_SOURCE="${2:-}"; PROXY_CORE="sing-box"; ENABLE_PROXY=1; shift 2 ;;
+      --sing-box-config=*) SING_BOX_CONFIG_SOURCE="${1#*=}"; PROXY_CORE="sing-box"; ENABLE_PROXY=1; shift ;;
       --no-p10k) INSTALL_POWERLEVEL10K=0; INSTALL_P10K_CONFIG=0; shift ;;
       --p10k) INSTALL_POWERLEVEL10K=1; INSTALL_P10K_CONFIG=1; shift ;;
       --set-zsh-default) SET_ZSH_AS_DEFAULT=1; shift ;;
@@ -141,6 +158,20 @@ show_config() {
   echo "输入法框架:           Fcitx5 $(bool_text "${ENABLE_FCITX5}")"
   echo "输入法引擎:           ${INPUT_METHOD_ENGINE}"
   echo "Rime 默认方案:        ${RIME_SCHEMA}"
+  echo
+  echo "[Proxy]"
+  echo "随 workstation 安装:  $(bool_text "${ENABLE_PROXY}")"
+  echo "代理核心:             ${PROXY_CORE}"
+  echo "自动启用服务:         $(bool_text "${PROXY_AUTO_ENABLE_SERVICE}")"
+  echo "Mihomo 包:            ${MIHOMO_PACKAGE}"
+  echo "Mihomo 配置来源:      ${MIHOMO_CONFIG_SOURCE:-生成基础模板}"
+  echo "Mihomo mixed-port:    ${MIHOMO_MIXED_PORT}"
+  echo "Mihomo 控制接口:      http://${MIHOMO_CONTROLLER_HOST}:${MIHOMO_CONTROLLER_PORT}"
+  echo "MetaCubeXD:           $(bool_text "${ENABLE_METACUBEXD}")"
+  echo "MetaCubeXD 地址:      http://${METACUBEXD_BIND}:${METACUBEXD_PORT}"
+  echo "sing-box 包:          ${SING_BOX_PACKAGE}"
+  echo "sing-box 配置来源:    ${SING_BOX_CONFIG_SOURCE:-生成基础模板}"
+  echo "sing-box mixed-port:  ${SING_BOX_MIXED_PORT}"
   echo "----------------------------------------------------------"
 }
 
@@ -155,6 +186,7 @@ module_desc() {
     fonts) echo "字体环境" ;;
     shell) echo "Zsh / Oh My Zsh / Powerlevel10k" ;;
     desktop) echo "Hyprland 桌面环境" ;;
+    proxy) echo "Proxy 代理环境" ;;
     *) echo "$1" ;;
   esac
 }
@@ -169,6 +201,7 @@ modules_for_command() {
     docker) echo "base docker" ;;
     fonts) echo "base fonts" ;;
     shell|zsh) echo "base fonts shell" ;;
+    proxy) echo "base proxy" ;;
     desktop|hyprland)
       if [[ "${INSTALL_ARCHLINUXCN:-0}" -eq 1 && "${BROWSER_PACKAGE:-}" == "google-chrome" ]]; then
         echo "base archlinuxcn fonts desktop"
@@ -177,7 +210,11 @@ modules_for_command() {
       fi
       ;;
     dev) echo "base git runtime nvim docker" ;;
-    workstation) echo "base archlinuxcn git runtime nvim docker fonts shell desktop" ;;
+    workstation)
+      local modules="base archlinuxcn git runtime nvim docker fonts shell desktop"
+      [[ "${ENABLE_PROXY:-0}" -eq 1 ]] && modules="${modules} proxy"
+      echo "${modules}"
+      ;;
     *) echo "$1" ;;
   esac
 }
@@ -207,6 +244,14 @@ show_plan() {
   echo "  Hyprland SDDM:    $(bool_text "${ENABLE_SDDM}")"
   echo "  浏览器:           ${BROWSER_DISPLAY_NAME:-${BROWSER_APP}} (${BROWSER_PACKAGE})"
   echo "  输入法:           Fcitx5 + ${INPUT_METHOD_ENGINE} (${RIME_SCHEMA})"
+  if [[ " ${modules_text} " == *" proxy "* ]]; then
+    echo "  Proxy:            本次安装 / ${PROXY_CORE}"
+  else
+    echo "  Proxy:            $(bool_text "${ENABLE_PROXY}") / ${PROXY_CORE}"
+  fi
+  if [[ "${PROXY_CORE:-mihomo}" == "mihomo" ]]; then
+    echo "  MetaCubeXD:       $(bool_text "${ENABLE_METACUBEXD}")"
+  fi
   echo "----------------------------------------------------------"
 }
 
@@ -228,6 +273,7 @@ install_profile_workstation() {
   install_fonts
   install_shell_zsh
   install_desktop_hyprland
+  ensure_proxy_env
 }
 
 run_command() {
@@ -241,6 +287,7 @@ run_command() {
     fonts) install_fonts ;;
     shell|zsh) install_shell_zsh ;;
     desktop|hyprland) install_desktop_hyprland ;;
+    proxy) install_proxy_env ;;
     dev) install_profile_dev ;;
     workstation) install_profile_workstation ;;
     *) die "未知命令：$1" ;;
@@ -260,6 +307,7 @@ show_summary() {
   echo "2. 如果加入了 docker 用户组，请注销或重启后再使用 docker"
   echo "3. 如果 Neovim 插件同步失败，可执行：nvim +Lazy sync"
   echo "4. 如果启用了 SDDM，请重启后在登录界面选择 Hyprland"
+  echo "5. 如果安装了 Proxy，可用 systemctl --user status archdevkit-mihomo 或 archdevkit-sing-box 查看服务"
   echo "----------------------------------------------------------"
 }
 
@@ -293,13 +341,14 @@ show_menu() {
     echo "7) 安装字体环境"
     echo "8) 安装 Zsh / Oh My Zsh / Powerlevel10k"
     echo "9) 安装 Hyprland 桌面环境"
-    echo "10) 安装开发环境组合"
-    echo "11) 安装完整工作站"
-    echo "12) 查看当前配置"
+    echo "10) 安装 Proxy 代理环境（可选：mihomo / MetaCubeXD / sing-box）"
+    echo "11) 安装开发环境组合"
+    echo "12) 安装完整工作站"
+    echo "13) 查看当前配置"
     echo "0) 退出"
     echo "----------------------------------------------------------"
-    read -r -p "请选择 [11]: " select_num
-    select_num="${select_num:-11}"
+    read -r -p "请选择 [12]: " select_num
+    select_num="${select_num:-12}"
     case "${select_num}" in
       1) confirm_and_run_command "base" "基础环境"; pause ;;
       2) confirm_and_run_command "archlinuxcn" "archlinuxcn 源"; pause ;;
@@ -310,9 +359,10 @@ show_menu() {
       7) confirm_and_run_command "fonts" "字体环境"; pause ;;
       8) confirm_and_run_command "shell" "Zsh / Oh My Zsh / Powerlevel10k"; pause ;;
       9) confirm_and_run_command "desktop" "Hyprland 桌面环境"; pause ;;
-      10) confirm_and_run_command "dev" "开发环境组合"; pause ;;
-      11) confirm_and_run_command "workstation" "完整工作站"; pause ;;
-      12) show_config; pause ;;
+      10) confirm_and_run_command "proxy" "Proxy 代理环境"; pause ;;
+      11) confirm_and_run_command "dev" "开发环境组合"; pause ;;
+      12) confirm_and_run_command "workstation" "完整工作站"; pause ;;
+      13) show_config; pause ;;
       0) exit 0 ;;
       *) log_warn "未知选择：${select_num}"; pause ;;
     esac
@@ -336,6 +386,7 @@ main() {
     fonts) confirm_and_run_command "fonts" "字体环境" ;;
     shell|zsh) confirm_and_run_command "shell" "Zsh / Oh My Zsh / Powerlevel10k" ;;
     desktop|hyprland) confirm_and_run_command "desktop" "Hyprland 桌面环境" ;;
+    proxy) confirm_and_run_command "proxy" "Proxy 代理环境" ;;
     dev) confirm_and_run_command "dev" "开发环境组合" ;;
     workstation) confirm_and_run_command "workstation" "完整工作站" ;;
     *) die "未知命令：${COMMAND}" ;;
