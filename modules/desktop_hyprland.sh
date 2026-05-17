@@ -208,7 +208,53 @@ EOF
 }
 
 sed_escape_replacement() {
-  printf '%s' "$1" | sed -e 's/[\/&]/\\&/g'
+  local value="$1"
+  value="${value//\\/\\\\}"
+  value="${value//&/\\&}"
+  value="${value//\//\\/}"
+  printf '%s' "${value}"
+}
+
+render_hyprland_template() {
+  local template="$1" target="$2" tmp_file
+  local browser_app terminal_app file_manager app_launcher
+
+  [[ -f "${template}" ]] || die "Hyprland 模板不存在：${template}"
+  [[ -n "${target}" ]] || die "Hyprland 模板目标为空"
+
+  browser_app="$(sed_escape_replacement "${BROWSER_APP:-google-chrome-stable}")"
+  terminal_app="$(sed_escape_replacement "${TERMINAL_APP:-kitty}")"
+  file_manager="$(sed_escape_replacement "${FILE_MANAGER:-thunar}")"
+  app_launcher="$(sed_escape_replacement "${APP_LAUNCHER:-wofi}")"
+
+  if [[ "${DRY_RUN:-0}" -eq 1 ]]; then
+    echo "+ render ${template} -> ${target}"
+    return 0
+  fi
+
+  mkdir -p "$(dirname "${target}")"
+  tmp_file="$(mktemp)"
+  sed \
+    -e "s/__TERMINAL_APP__/${terminal_app}/g" \
+    -e "s/__FILE_MANAGER__/${file_manager}/g" \
+    -e "s/__APP_LAUNCHER__/${app_launcher}/g" \
+    -e "s/__BROWSER_APP__/${browser_app}/g" \
+    "${template}" > "${tmp_file}"
+
+  backup_path "${target}"
+  install -m 0644 "${tmp_file}" "${target}"
+  rm -f "${tmp_file}"
+}
+
+install_hyprland_templates() {
+  local template_dir="${SCRIPT_DIR}/files/hyprland"
+
+  render_hyprland_template "${template_dir}/hyprland.conf.tpl" "${HOME}/.config/hypr/hyprland.conf"
+  render_hyprland_template "${template_dir}/waybar.config.tpl" "${HOME}/.config/waybar/config"
+  render_hyprland_template "${template_dir}/waybar.style.css.tpl" "${HOME}/.config/waybar/style.css"
+  render_hyprland_template "${template_dir}/mako.config.tpl" "${HOME}/.config/mako/config"
+  render_hyprland_template "${template_dir}/wofi.config.tpl" "${HOME}/.config/wofi/config"
+  render_hyprland_template "${template_dir}/kitty.conf.tpl" "${HOME}/.config/kitty/kitty.conf"
 }
 
 generate_hyprland_config() {
@@ -218,231 +264,7 @@ generate_hyprland_config() {
   }
 
   log_info "生成 Hyprland 默认配置"
-
-  backup_path "${HOME}/.config/hypr"
-  backup_path "${HOME}/.config/waybar"
-  backup_path "${HOME}/.config/mako"
-  backup_path "${HOME}/.config/wofi"
-  backup_path "${HOME}/.config/kitty"
-
-  mkdir -p "${HOME}/.config/hypr" "${HOME}/.config/waybar" "${HOME}/.config/mako" "${HOME}/.config/wofi" "${HOME}/.config/kitty"
-
-  if [[ "${DRY_RUN:-0}" -eq 1 ]]; then
-    echo "+ write Hyprland/Waybar/Mako/Wofi/Kitty config"
-    return 0
-  fi
-
-  local browser_app terminal_app file_manager app_launcher
-  browser_app="$(sed_escape_replacement "${BROWSER_APP:-google-chrome-stable}")"
-  terminal_app="$(sed_escape_replacement "${TERMINAL_APP:-kitty}")"
-  file_manager="$(sed_escape_replacement "${FILE_MANAGER:-thunar}")"
-  app_launcher="$(sed_escape_replacement "${APP_LAUNCHER:-wofi}")"
-
-  cat > "${HOME}/.config/hypr/hyprland.conf" <<'EOF'
-# ArchDevKit 生成的 Hyprland 主配置
-# 没有壁纸时不会启动 hyprpaper。
-
-$mod = SUPER
-$terminal = __TERMINAL_APP__
-$fileManager = __FILE_MANAGER__
-$menu = __APP_LAUNCHER__ --show drun
-
-monitor = ,preferred,auto,1
-
-env = XCURSOR_SIZE,24
-env = QT_QPA_PLATFORM,wayland;xcb
-env = QT_WAYLAND_DISABLE_WINDOWDECORATION,1
-env = GDK_BACKEND,wayland,x11
-env = MOZ_ENABLE_WAYLAND,1
-env = GTK_IM_MODULE,fcitx
-env = QT_IM_MODULE,fcitx
-env = XMODIFIERS,@im=fcitx
-env = INPUT_METHOD,fcitx
-env = SDL_IM_MODULE,fcitx
-env = GLFW_IM_MODULE,ibus
-
-exec-once = waybar
-exec-once = mako
-exec-once = fcitx5
-exec-once = nm-applet --indicator
-exec-once = blueman-applet
-exec-once = /usr/lib/polkit-kde-authentication-agent-1
-
-input {
-    kb_layout = us
-    follow_mouse = 1
-    sensitivity = 0
-
-    touchpad {
-        natural_scroll = true
-        tap-to-click = true
-        disable_while_typing = true
-    }
-}
-
-general {
-    gaps_in = 5
-    gaps_out = 10
-    border_size = 2
-    layout = dwindle
-    col.active_border = rgba(7aa2f7ff)
-    col.inactive_border = rgba(414868ff)
-}
-
-decoration {
-    rounding = 10
-    shadow {
-        enabled = true
-        range = 12
-        render_power = 3
-        color = rgba(00000055)
-    }
-    blur {
-        enabled = true
-        size = 6
-        passes = 2
-        new_optimizations = true
-    }
-}
-
-animations {
-    enabled = true
-    bezier = easeOut, 0.16, 1, 0.3, 1
-    animation = windows, 1, 4, easeOut
-    animation = windowsOut, 1, 4, easeOut
-    animation = border, 1, 6, easeOut
-    animation = fade, 1, 4, easeOut
-    animation = workspaces, 1, 4, easeOut
-}
-
-dwindle {
-    pseudotile = true
-    preserve_split = true
-}
-
-misc {
-    disable_hyprland_logo = true
-    disable_splash_rendering = true
-    vfr = true
-}
-
-bind = $mod, Return, exec, $terminal
-bind = $mod, Space, exec, $menu
-bind = $mod, E, exec, $fileManager
-bind = $mod, B, exec, __BROWSER_APP__
-bind = $mod, Q, killactive
-bind = $mod SHIFT, Q, exit
-bind = $mod, F, fullscreen
-bind = $mod, V, togglefloating
-
-bind = $mod, Left, movefocus, l
-bind = $mod, Right, movefocus, r
-bind = $mod, Up, movefocus, u
-bind = $mod, Down, movefocus, d
-
-bind = $mod SHIFT, Left, movewindow, l
-bind = $mod SHIFT, Right, movewindow, r
-bind = $mod SHIFT, Up, movewindow, u
-bind = $mod SHIFT, Down, movewindow, d
-
-bind = $mod, 1, workspace, 1
-bind = $mod, 2, workspace, 2
-bind = $mod, 3, workspace, 3
-bind = $mod, 4, workspace, 4
-bind = $mod, 5, workspace, 5
-bind = $mod, 6, workspace, 6
-bind = $mod, 7, workspace, 7
-bind = $mod, 8, workspace, 8
-bind = $mod, 9, workspace, 9
-
-bind = $mod SHIFT, 1, movetoworkspace, 1
-bind = $mod SHIFT, 2, movetoworkspace, 2
-bind = $mod SHIFT, 3, movetoworkspace, 3
-bind = $mod SHIFT, 4, movetoworkspace, 4
-bind = $mod SHIFT, 5, movetoworkspace, 5
-bind = $mod SHIFT, 6, movetoworkspace, 6
-bind = $mod SHIFT, 7, movetoworkspace, 7
-bind = $mod SHIFT, 8, movetoworkspace, 8
-bind = $mod SHIFT, 9, movetoworkspace, 9
-
-bindm = $mod, mouse:272, movewindow
-bindm = $mod, mouse:273, resizewindow
-
-bind = , Print, exec, mkdir -p ~/Pictures && grim -g "$(slurp)" ~/Pictures/screenshot-$(date +%F-%H%M%S).png
-bind = SHIFT, Print, exec, grim -g "$(slurp)" - | wl-copy
-
-bind = , XF86AudioRaiseVolume, exec, wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+
-bind = , XF86AudioLowerVolume, exec, wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-
-bind = , XF86AudioMute, exec, wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle
-bind = , XF86MonBrightnessUp, exec, brightnessctl set +5%
-bind = , XF86MonBrightnessDown, exec, brightnessctl set 5%-
-
-windowrulev2 = float,class:^(pavucontrol)$
-windowrulev2 = float,class:^(blueman-manager)$
-windowrulev2 = float,class:^(nm-connection-editor)$
-windowrulev2 = float,class:^(fcitx5-config-qt)$
-EOF
-
-  sed -i \
-    -e "s/__TERMINAL_APP__/${terminal_app}/g" \
-    -e "s/__FILE_MANAGER__/${file_manager}/g" \
-    -e "s/__APP_LAUNCHER__/${app_launcher}/g" \
-    -e "s/__BROWSER_APP__/${browser_app}/g" \
-    "${HOME}/.config/hypr/hyprland.conf"
-
-  cat > "${HOME}/.config/waybar/config" <<'EOF'
-{
-  "layer": "top",
-  "position": "top",
-  "height": 34,
-  "modules-left": ["hyprland/workspaces", "hyprland/window"],
-  "modules-center": ["clock"],
-  "modules-right": ["network", "pulseaudio", "cpu", "memory", "tray"],
-  "hyprland/workspaces": { "format": "{id}", "on-click": "activate" },
-  "clock": { "format": "{:%Y-%m-%d %H:%M}" },
-  "network": { "format-wifi": "  {essid}", "format-ethernet": "󰈀 有线", "format-disconnected": "󰖪 断开" },
-  "pulseaudio": { "format": "  {volume}%", "format-muted": "󰖁 静音", "on-click": "pavucontrol" },
-  "cpu": { "format": "CPU {usage}%" },
-  "memory": { "format": "MEM {}%" },
-  "tray": { "spacing": 10 }
-}
-EOF
-
-  cat > "${HOME}/.config/waybar/style.css" <<'EOF'
-* { font-family: "JetBrainsMono Nerd Font", "Noto Sans CJK SC"; font-size: 13px; border: none; min-height: 0; }
-window#waybar { background: rgba(26, 27, 38, 0.88); color: #c0caf5; }
-#workspaces button { padding: 0 10px; color: #a9b1d6; background: transparent; }
-#workspaces button.active { color: #7aa2f7; background: rgba(122, 162, 247, 0.18); }
-#clock, #network, #pulseaudio, #cpu, #memory, #tray, #window { padding: 0 10px; }
-EOF
-
-  cat > "${HOME}/.config/mako/config" <<'EOF'
-font=JetBrainsMono Nerd Font 11
-background-color=#1a1b26dd
-text-color=#c0caf5
-border-color=#7aa2f7
-border-size=2
-border-radius=8
-padding=12
-default-timeout=5000
-EOF
-
-  cat > "${HOME}/.config/wofi/config" <<'EOF'
-show=drun
-width=600
-height=420
-prompt=Search
-allow_images=true
-insensitive=true
-EOF
-
-  cat > "${HOME}/.config/kitty/kitty.conf" <<'EOF'
-font_family JetBrainsMono Nerd Font
-font_size 12.0
-background_opacity 0.94
-confirm_os_window_close 0
-enable_audio_bell no
-EOF
+  install_hyprland_templates
 }
 
 enable_sddm_if_needed() {

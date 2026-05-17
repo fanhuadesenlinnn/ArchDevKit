@@ -128,6 +128,8 @@ Hyprland 桌面默认安装 Google Chrome，不安装 Firefox。默认浏览器�
 bash install.sh desktop --browser-package google-chrome --browser-app google-chrome-stable --rime-schema luna_pinyin_simp
 ```
 
+Hyprland、Waybar、Mako、Wofi、Kitty 的默认配置模板放在 `files/hyprland/`。脚本安装时会根据 `install_vars` 中的 `TERMINAL_APP`、`APP_LAUNCHER`、`FILE_MANAGER`、`BROWSER_APP` 渲染模板。
+
 ## Proxy 模块
 
 Proxy 是可选模块，默认配置为：
