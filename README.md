@@ -110,6 +110,9 @@ bash install.sh nvim --github-proxy https://gh-proxy.com/
 --browser-package NAME    指定桌面浏览器安装包
 --browser-app COMMAND     指定桌面浏览器启动命令
 --rime-schema NAME        指定 Rime 默认方案
+--rime-repo URL           指定 Rime 配置仓库
+--rime-branch NAME        指定 Rime 配置分支
+--no-rime-config          不安装 Rime 配置仓库
 --with-proxy              workstation 中安装 Proxy 模块
 --no-proxy                workstation 中不安装 Proxy 模块
 --proxy-core NAME         指定代理核心：mihomo / sing-box
@@ -122,10 +125,20 @@ bash install.sh nvim --github-proxy https://gh-proxy.com/
 
 Hyprland 桌面默认安装 Google Chrome，不安装 Firefox。默认浏览器包为 `google-chrome`，启动命令为 `google-chrome-stable`；如果当前 pacman 源没有该包，脚本会先尝试按配置启用 `archlinuxcn`，仍不可用时再从 AUR 构建。
 
-中文输入法默认使用 Fcitx5 + Rime，默认方案为 `luna_pinyin_simp`。可通过 `install_vars` 或参数覆盖：
+中文输入法默认使用 Fcitx5 + Rime，默认方案为 `luna_pinyin_simp`。Rime 配置默认从独立仓库拉取并安装到 `~/.local/share/fcitx5/rime`：
+
+```bash
+https://github.com/fanhuadesenlinnn/rime-config.git
+```
+
+该仓库只保留可共享配置，不包含 `build/`、`*.userdb/`、`sync/`、`installation*.yaml`、`user*.yaml` 等机器状态、同步数据和个人输入习惯文件。
+
+可通过 `install_vars` 或参数覆盖：
 
 ```bash
 bash install.sh desktop --browser-package google-chrome --browser-app google-chrome-stable --rime-schema luna_pinyin_simp
+bash install.sh desktop --rime-repo https://github.com/fanhuadesenlinnn/rime-config.git
+bash install.sh desktop --no-rime-config
 ```
 
 Hyprland、Waybar、Mako、Wofi、Kitty 的默认配置模板放在 `files/hyprland/`。脚本安装时会根据 `install_vars` 中的 `TERMINAL_APP`、`APP_LAUNCHER`、`FILE_MANAGER`、`BROWSER_APP` 渲染模板。

@@ -49,6 +49,9 @@ ArchDevKit - Arch Linux 工作站初始化工具
   --browser-package NAME    指定桌面浏览器安装包
   --browser-app COMMAND     指定桌面浏览器启动命令
   --rime-schema NAME        指定 Rime 默认方案
+  --rime-repo URL           指定 Rime 配置仓库
+  --rime-branch NAME        指定 Rime 配置分支
+  --no-rime-config          不安装 Rime 配置仓库
   --with-proxy              workstation 中安装 Proxy 模块
   --no-proxy                workstation 中不安装 Proxy 模块
   --proxy-core NAME         指定代理核心：mihomo / sing-box
@@ -95,6 +98,11 @@ parse_args() {
       --browser-app=*) BROWSER_APP="${1#*=}"; shift ;;
       --rime-schema) RIME_SCHEMA="${2:-}"; INPUT_METHOD_ENGINE="rime"; shift 2 ;;
       --rime-schema=*) RIME_SCHEMA="${1#*=}"; INPUT_METHOD_ENGINE="rime"; shift ;;
+      --rime-repo) RIME_CONFIG_REPO="${2:-}"; INSTALL_RIME_CONFIG=1; INPUT_METHOD_ENGINE="rime"; shift 2 ;;
+      --rime-repo=*) RIME_CONFIG_REPO="${1#*=}"; INSTALL_RIME_CONFIG=1; INPUT_METHOD_ENGINE="rime"; shift ;;
+      --rime-branch) RIME_CONFIG_BRANCH="${2:-}"; INSTALL_RIME_CONFIG=1; INPUT_METHOD_ENGINE="rime"; shift 2 ;;
+      --rime-branch=*) RIME_CONFIG_BRANCH="${1#*=}"; INSTALL_RIME_CONFIG=1; INPUT_METHOD_ENGINE="rime"; shift ;;
+      --no-rime-config) INSTALL_RIME_CONFIG=0; shift ;;
       --with-proxy) ENABLE_PROXY=1; shift ;;
       --no-proxy) ENABLE_PROXY=0; shift ;;
       --proxy-core) PROXY_CORE="${2:-mihomo}"; ENABLE_PROXY=1; shift 2 ;;
@@ -158,6 +166,10 @@ show_config() {
   echo "输入法框架:           Fcitx5 $(bool_text "${ENABLE_FCITX5}")"
   echo "输入法引擎:           ${INPUT_METHOD_ENGINE}"
   echo "Rime 默认方案:        ${RIME_SCHEMA}"
+  echo "Rime 配置仓库:        ${RIME_CONFIG_REPO:-不安装}"
+  echo "Rime 配置分支:        ${RIME_CONFIG_BRANCH:-默认分支}"
+  echo "Rime 配置目录:        ${RIME_CONFIG_DIR}"
+  echo "安装 Rime 配置:       $(bool_text "${INSTALL_RIME_CONFIG}")"
   echo
   echo "[Proxy]"
   echo "随 workstation 安装:  $(bool_text "${ENABLE_PROXY}")"
@@ -251,6 +263,9 @@ show_plan() {
   echo "  Hyprland SDDM:    $(bool_text "${ENABLE_SDDM}")"
   echo "  浏览器:           ${BROWSER_DISPLAY_NAME:-${BROWSER_APP}} (${BROWSER_PACKAGE})"
   echo "  输入法:           Fcitx5 + ${INPUT_METHOD_ENGINE} (${RIME_SCHEMA})"
+  if [[ "${INPUT_METHOD_ENGINE:-rime}" == "rime" ]]; then
+    echo "  Rime 配置:        $(bool_text "${INSTALL_RIME_CONFIG}") / ${RIME_CONFIG_REPO:-未设置}"
+  fi
   if [[ " ${modules_text} " == *" proxy "* ]]; then
     echo "  Proxy:            本次安装 / ${PROXY_CORE}"
   else
