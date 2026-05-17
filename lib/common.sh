@@ -29,6 +29,14 @@ bool_text() {
 to_lower() { printf '%s' "$1" | tr '[:upper:]' '[:lower:]'; }
 pause() { read -r -p "按回车键继续..." _; }
 
+sed_escape_replacement() {
+  local value="$1"
+  value="${value//\\/\\\\}"
+  value="${value//&/\\&}"
+  value="${value//\//\\/}"
+  printf '%s' "${value}"
+}
+
 mark_done() { MODULE_DONE["$1"]=1; }
 is_done() { [[ "${MODULE_DONE[$1]:-0}" -eq 1 ]]; }
 

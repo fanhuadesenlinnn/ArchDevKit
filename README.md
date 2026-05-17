@@ -158,7 +158,8 @@ bash install.sh workstation --with-proxy
 bash install.sh proxy --proxy-core sing-box
 ```
 
-默认 Mihomo 配置来自 `files/mihomo/config.yaml`，基于日常大陆网络、AI 服务、流媒体、GitHub、游戏平台、广告拦截和懒猫微服兼容整理。首次使用只需要替换其中的 `proxy-providers.all-proxies.url`。
+默认 Mihomo 配置模板来自 `files/mihomo/config.yaml.tpl`，基于日常大陆网络、AI 服务、流媒体、GitHub、游戏平台、广告拦截和懒猫微服兼容整理。首次使用只需要替换生成配置中的 `proxy-providers.all-proxies.url`。
+默认 sing-box 配置模板来自 `files/sing-box/config.json.tpl`。
 
 使用自己的配置文件或订阅 URL 覆盖默认模板：
 

@@ -44,7 +44,25 @@ proxy_config_source_to_file() {
 }
 
 is_default_mihomo_config_source() {
-  [[ "${MIHOMO_CONFIG_SOURCE:-}" == "${SCRIPT_DIR}/files/mihomo/config.yaml" ]]
+  case "${MIHOMO_CONFIG_SOURCE:-}" in
+    ""|"${SCRIPT_DIR}/files/mihomo/config.yaml.tpl"|"${SCRIPT_DIR}/files/mihomo/config.yaml")
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+is_default_sing_box_config_source() {
+  case "${SING_BOX_CONFIG_SOURCE:-}" in
+    ""|"${SCRIPT_DIR}/files/sing-box/config.json.tpl")
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
 }
 
 bool_to_yaml() {
@@ -61,65 +79,63 @@ quote_yaml_string() {
   printf '"%s"' "${value}"
 }
 
-render_default_mihomo_config() {
-  local source="${SCRIPT_DIR}/files/mihomo/config.yaml"
-  local target="$1"
-  local tmp_file allow_lan secret external_ui
+render_proxy_template() {
+  local template="$1" target="$2" mode="${3:-0600}" tmp_file
+  shift 3 || true
 
-  [[ -f "${source}" ]] || die "默认 Mihomo 配置不存在：${source}"
-  [[ -n "${target}" ]] || die "Mihomo 配置目标为空"
-
-  mkdir -p "$(dirname "${target}")"
-  allow_lan="$(bool_to_yaml "${MIHOMO_ALLOW_LAN:-0}")"
-  secret="$(quote_yaml_string "${MIHOMO_SECRET:-}")"
-  external_ui="${METACUBEXD_WEB_ROOT:-/usr/share/metacubexd}"
+  [[ -f "${template}" ]] || die "代理模板不存在：${template}"
+  [[ -n "${target}" ]] || die "代理模板目标为空"
 
   if [[ "${DRY_RUN:-0}" -eq 1 ]]; then
-    echo "+ render ${source} -> ${target}"
+    echo "+ render ${template} -> ${target}"
     return 0
   fi
 
+  mkdir -p "$(dirname "${target}")"
   tmp_file="$(mktemp)"
-  awk \
-    -v mixed_port="${MIHOMO_MIXED_PORT:-7890}" \
-    -v allow_lan="${allow_lan}" \
-    -v bind_address="${MIHOMO_BIND_ADDRESS:-127.0.0.1}" \
-    -v controller_host="${MIHOMO_CONTROLLER_HOST:-127.0.0.1}" \
-    -v controller_port="${MIHOMO_CONTROLLER_PORT:-9090}" \
-    -v dns_listen="${MIHOMO_DNS_LISTEN:-127.0.0.1:1053}" \
-    -v secret="${secret}" \
-    -v enable_ui="${ENABLE_METACUBEXD:-0}" \
-    -v external_ui="${external_ui}" '
-      BEGIN { in_dns=0; ui_written=0 }
-      /^dns:/ { in_dns=1; print; next }
-      /^[^[:space:]][^:]*:/ && $0 !~ /^dns:/ { in_dns=0 }
-      /^mixed-port:/ { print "mixed-port: " mixed_port; next }
-      /^allow-lan:/ { print "allow-lan: " allow_lan; next }
-      /^bind-address:/ { print "bind-address: \"" bind_address "\""; next }
-      /^external-controller:/ {
-        print "external-controller: " controller_host ":" controller_port
-        next
-      }
-      /^external-ui:/ {
-        if (enable_ui == 1) {
-          print "external-ui: " external_ui
-          ui_written=1
-        }
-        next
-      }
-      /^secret:/ { print "secret: " secret; next }
-      in_dns && /^  listen:/ { print "  listen: " dns_listen; next }
-      { print }
-      END {
-        if (enable_ui == 1 && ui_written == 0) {
-          print "external-ui: " external_ui
-        }
-      }
-    ' "${source}" > "${tmp_file}"
+  sed "$@" "${template}" > "${tmp_file}"
 
   backup_path "${target}"
-  install -m 0600 "${tmp_file}" "${target}"
+  install -m "${mode}" "${tmp_file}" "${target}"
   rm -f "${tmp_file}"
+}
+
+render_mihomo_config_template() {
+  local template="$1" target="$2"
+  local allow_lan secret external_ui_line
+
+  allow_lan="$(sed_escape_replacement "$(bool_to_yaml "${MIHOMO_ALLOW_LAN:-0}")")"
+  secret="$(sed_escape_replacement "$(quote_yaml_string "${MIHOMO_SECRET:-}")")"
+  if [[ "${ENABLE_METACUBEXD:-0}" -eq 1 ]]; then
+    external_ui_line="$(sed_escape_replacement "external-ui: ${METACUBEXD_WEB_ROOT:-/usr/share/metacubexd}")"
+  else
+    external_ui_line=""
+  fi
+
+  render_proxy_template "${template}" "${target}" 0600 \
+    -e "s/__MIHOMO_MIXED_PORT__/$(sed_escape_replacement "${MIHOMO_MIXED_PORT:-7890}")/g" \
+    -e "s/__MIHOMO_ALLOW_LAN__/${allow_lan}/g" \
+    -e "s/__MIHOMO_BIND_ADDRESS__/$(sed_escape_replacement "${MIHOMO_BIND_ADDRESS:-127.0.0.1}")/g" \
+    -e "s/__MIHOMO_CONTROLLER_HOST__/$(sed_escape_replacement "${MIHOMO_CONTROLLER_HOST:-127.0.0.1}")/g" \
+    -e "s/__MIHOMO_CONTROLLER_PORT__/$(sed_escape_replacement "${MIHOMO_CONTROLLER_PORT:-9090}")/g" \
+    -e "s/__MIHOMO_DNS_LISTEN__/$(sed_escape_replacement "${MIHOMO_DNS_LISTEN:-127.0.0.1:1053}")/g" \
+    -e "s/__MIHOMO_SECRET_YAML__/${secret}/g" \
+    -e "s/__METACUBEXD_EXTERNAL_UI_LINE__/${external_ui_line}/g"
+}
+
+render_default_mihomo_config() {
+  render_mihomo_config_template "${SCRIPT_DIR}/files/mihomo/config.yaml.tpl" "$1"
+}
+
+render_sing_box_config_template() {
+  local template="$1" target="$2"
+
+  render_proxy_template "${template}" "${target}" 0600 \
+    -e "s/__SING_BOX_MIXED_PORT__/$(sed_escape_replacement "${SING_BOX_MIXED_PORT:-7890}")/g"
+}
+
+render_default_sing_box_config() {
+  render_sing_box_config_template "${SCRIPT_DIR}/files/sing-box/config.json.tpl" "$1"
 }
 
 mihomo_config_has_placeholder_subscription() {
@@ -177,10 +193,12 @@ configure_mihomo() {
   mkdir -p "${config_dir}" "${config_dir}/providers" "${config_dir}/ruleset"
   if is_default_mihomo_config_source; then
     render_default_mihomo_config "${config_file}"
+  elif [[ "${MIHOMO_CONFIG_SOURCE:-}" == *.tpl && "${MIHOMO_CONFIG_SOURCE:-}" != http://* && "${MIHOMO_CONFIG_SOURCE:-}" != https://* ]]; then
+    render_mihomo_config_template "${MIHOMO_CONFIG_SOURCE}" "${config_file}"
   elif proxy_config_source_to_file "${MIHOMO_CONFIG_SOURCE:-}" "${config_file}"; then
     :
   else
-    write_default_mihomo_config "${config_file}"
+    render_default_mihomo_config "${config_file}"
   fi
 
   mkdir -p "${service_dir}"
@@ -206,51 +224,6 @@ RestartSec=3
 [Install]
 WantedBy=default.target
 EOF
-}
-
-write_default_mihomo_config() {
-  local config_file="$1"
-  local external_controller="${MIHOMO_CONTROLLER_HOST:-127.0.0.1}:${MIHOMO_CONTROLLER_PORT:-9090}"
-
-  if [[ "${DRY_RUN:-0}" -eq 1 ]]; then
-    echo "+ write default Mihomo config ${config_file}"
-    return 0
-  fi
-
-  mkdir -p "$(dirname "${config_file}")"
-  backup_path "${config_file}"
-  {
-    echo "mixed-port: ${MIHOMO_MIXED_PORT:-7890}"
-    echo "allow-lan: false"
-    echo "mode: rule"
-    echo "log-level: info"
-    echo "external-controller: ${external_controller}"
-    if [[ -n "${MIHOMO_SECRET:-}" ]]; then
-      printf 'secret: "%s"\n' "${MIHOMO_SECRET}"
-    fi
-    if [[ "${ENABLE_METACUBEXD:-0}" -eq 1 ]]; then
-      echo "external-ui: ${METACUBEXD_WEB_ROOT:-/usr/share/metacubexd}"
-    fi
-    cat <<'EOF'
-dns:
-  enable: true
-  listen: 127.0.0.1:1053
-  default-nameserver:
-    - 223.5.5.5
-    - 119.29.29.29
-  nameserver:
-    - https://dns.alidns.com/dns-query
-    - https://doh.pub/dns-query
-proxies: []
-proxy-groups:
-  - name: PROXY
-    type: select
-    proxies:
-      - DIRECT
-rules:
-  - MATCH,DIRECT
-EOF
-  } > "${config_file}"
 }
 
 install_metacubexd() {
@@ -281,10 +254,14 @@ configure_sing_box() {
 
   log_info "配置 sing-box：${config_file}"
   mkdir -p "${config_dir}"
-  if proxy_config_source_to_file "${SING_BOX_CONFIG_SOURCE:-}" "${config_file}"; then
+  if is_default_sing_box_config_source; then
+    render_default_sing_box_config "${config_file}"
+  elif [[ "${SING_BOX_CONFIG_SOURCE:-}" == *.tpl && "${SING_BOX_CONFIG_SOURCE:-}" != http://* && "${SING_BOX_CONFIG_SOURCE:-}" != https://* ]]; then
+    render_sing_box_config_template "${SING_BOX_CONFIG_SOURCE}" "${config_file}"
+  elif proxy_config_source_to_file "${SING_BOX_CONFIG_SOURCE:-}" "${config_file}"; then
     :
   else
-    write_default_sing_box_config "${config_file}"
+    render_default_sing_box_config "${config_file}"
   fi
 
   mkdir -p "${service_dir}"
@@ -309,42 +286,6 @@ RestartSec=3
 
 [Install]
 WantedBy=default.target
-EOF
-}
-
-write_default_sing_box_config() {
-  local config_file="$1"
-
-  if [[ "${DRY_RUN:-0}" -eq 1 ]]; then
-    echo "+ write default sing-box config ${config_file}"
-    return 0
-  fi
-
-  mkdir -p "$(dirname "${config_file}")"
-  backup_path "${config_file}"
-  cat > "${config_file}" <<EOF
-{
-  "log": {
-    "level": "info"
-  },
-  "inbounds": [
-    {
-      "type": "mixed",
-      "tag": "mixed-in",
-      "listen": "127.0.0.1",
-      "listen_port": ${SING_BOX_MIXED_PORT:-7890}
-    }
-  ],
-  "outbounds": [
-    {
-      "type": "direct",
-      "tag": "direct"
-    }
-  ],
-  "route": {
-    "final": "direct"
-  }
-}
 EOF
 }
 

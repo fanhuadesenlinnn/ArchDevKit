@@ -110,7 +110,7 @@ PROXY_AUTO_ENABLE_SERVICE=1 # 1=安装后启用并启动用户服务，0=只安�
 MIHOMO_PACKAGE="mihomo"
 MIHOMO_CONFIG_DIR="${HOME}/.config/mihomo"
 MIHOMO_CONFIG_FILE="${MIHOMO_CONFIG_DIR}/config.yaml"
-MIHOMO_CONFIG_SOURCE="${SCRIPT_DIR}/files/mihomo/config.yaml" # 本地 config.yaml 或 URL；为空则生成 DIRECT 基础模板
+MIHOMO_CONFIG_SOURCE="${SCRIPT_DIR}/files/mihomo/config.yaml.tpl" # 本地 config.yaml/.tpl 或 URL；为空则渲染默认模板
 MIHOMO_MIXED_PORT=7890
 MIHOMO_ALLOW_LAN=0
 MIHOMO_BIND_ADDRESS="127.0.0.1"
@@ -126,5 +126,5 @@ METACUBEXD_WEB_ROOT="/usr/share/metacubexd"
 SING_BOX_PACKAGE="sing-box"
 SING_BOX_CONFIG_DIR="${HOME}/.config/sing-box"
 SING_BOX_CONFIG_FILE="${SING_BOX_CONFIG_DIR}/config.json"
-SING_BOX_CONFIG_SOURCE="" # 本地 config.json 或 URL；为空则生成 DIRECT 基础模板
+SING_BOX_CONFIG_SOURCE="${SCRIPT_DIR}/files/sing-box/config.json.tpl" # 本地 config.json/.tpl 或 URL；为空则渲染默认模板
 SING_BOX_MIXED_PORT=7890

@@ -7,9 +7,9 @@
 # ------------------------------
 # 基础监听
 # ------------------------------
-mixed-port: 7890
-allow-lan: false
-bind-address: "127.0.0.1"
+mixed-port: __MIHOMO_MIXED_PORT__
+allow-lan: __MIHOMO_ALLOW_LAN__
+bind-address: "__MIHOMO_BIND_ADDRESS__"
 mode: rule
 log-level: info
 ipv6: true
@@ -18,11 +18,11 @@ tcp-concurrent: true
 global-client-fingerprint: chrome
 
 # 外部控制接口。默认仅本机访问，避免局域网裸露控制 API。
-external-controller: 127.0.0.1:9090
+external-controller: __MIHOMO_CONTROLLER_HOST__:__MIHOMO_CONTROLLER_PORT__
 # MetaCubeXD 安装后由 Mihomo 直接托管：http://127.0.0.1:9090/ui/
-external-ui: /usr/share/metacubexd
+__METACUBEXD_EXTERNAL_UI_LINE__
 # 如需局域网访问面板，请改为 0.0.0.0:9090，并务必设置 secret。
-secret: ""
+secret: __MIHOMO_SECRET_YAML__
 
 profile:
   # 记住策略组选择，减少后续反复调整。
@@ -53,7 +53,7 @@ tun:
 # ------------------------------
 dns:
   enable: true
-  listen: 127.0.0.1:1053
+  listen: __MIHOMO_DNS_LISTEN__
   ipv6: true
   cache-algorithm: arc
   enhanced-mode: fake-ip

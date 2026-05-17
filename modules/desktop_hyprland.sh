@@ -207,14 +207,6 @@ Layout=
 EOF
 }
 
-sed_escape_replacement() {
-  local value="$1"
-  value="${value//\\/\\\\}"
-  value="${value//&/\\&}"
-  value="${value//\//\\/}"
-  printf '%s' "${value}"
-}
-
 render_hyprland_template() {
   local template="$1" target="$2" tmp_file
   local browser_app terminal_app file_manager app_launcher
