@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # Proxy 模块
-# 负责安装 Mihomo / sing-box 代理核心，可选安装 MetaCubeXD 面板静态文件，并生成用户级 systemd 服务。
+# 负责安装 Mihomo / sing-box 代理核心。
+# Mihomo 使用系统级 /etc/mihomo 配置和包自带 systemd 服务；sing-box 仍使用 ArchDevKit 用户级服务。
 
 proxy_service_name() {
   case "${PROXY_CORE:-mihomo}" in
-    mihomo) printf "archdevkit-mihomo.service" ;;
+    mihomo) printf "%s" "${MIHOMO_SERVICE_NAME:-mihomo.service}" ;;
     sing-box) printf "archdevkit-sing-box.service" ;;
     *) die "未知代理核心：${PROXY_CORE}" ;;
   esac
@@ -40,6 +41,38 @@ proxy_config_source_to_file() {
 
   backup_path "${target}"
   install -m 0600 "${tmp_file}" "${target}"
+  rm -f "${tmp_file}"
+}
+
+proxy_config_source_to_root_file() {
+  local source="$1" target="$2" mode="${3:-0600}" tmp_file
+  [[ -n "${target}" ]] || die "代理配置目标文件为空"
+  [[ -n "${source}" ]] || return 1
+
+  if [[ "${DRY_RUN:-0}" -eq 1 ]]; then
+    echo "+ sudo install config ${source} -> ${target}"
+    return 0
+  fi
+
+  tmp_file="$(mktemp)"
+  case "${source}" in
+    http://*|https://*)
+      require_cmd curl
+      log_info "下载代理配置：${source}"
+      curl -fL "${source}" -o "${tmp_file}" || {
+        rm -f "${tmp_file}"
+        die "下载代理配置失败：${source}"
+      }
+      ;;
+    *)
+      [[ -f "${source}" ]] || die "代理配置文件不存在：${source}"
+      cp -a "${source}" "${tmp_file}"
+      ;;
+  esac
+
+  run_sudo mkdir -p "$(dirname "${target}")"
+  backup_file_root "${target}"
+  run_sudo install -m "${mode}" "${tmp_file}" "${target}"
   rm -f "${tmp_file}"
 }
 
@@ -100,6 +133,27 @@ render_proxy_template() {
   rm -f "${tmp_file}"
 }
 
+render_proxy_template_root() {
+  local template="$1" target="$2" mode="${3:-0600}" tmp_file
+  shift 3 || true
+
+  [[ -f "${template}" ]] || die "代理模板不存在：${template}"
+  [[ -n "${target}" ]] || die "代理模板目标为空"
+
+  if [[ "${DRY_RUN:-0}" -eq 1 ]]; then
+    echo "+ sudo render ${template} -> ${target}"
+    return 0
+  fi
+
+  tmp_file="$(mktemp)"
+  sed "$@" "${template}" > "${tmp_file}"
+
+  run_sudo mkdir -p "$(dirname "${target}")"
+  backup_file_root "${target}"
+  run_sudo install -m "${mode}" "${tmp_file}" "${target}"
+  rm -f "${tmp_file}"
+}
+
 render_mihomo_config_template() {
   local template="$1" target="$2"
   local allow_lan secret external_ui_line external_ui_dir
@@ -107,13 +161,13 @@ render_mihomo_config_template() {
   allow_lan="$(sed_escape_replacement "$(bool_to_yaml "${MIHOMO_ALLOW_LAN:-0}")")"
   secret="$(sed_escape_replacement "$(quote_yaml_string "${MIHOMO_SECRET:-}")")"
   if [[ "${ENABLE_METACUBEXD:-0}" -eq 1 ]]; then
-    external_ui_dir="${MIHOMO_EXTERNAL_UI_DIR:-${MIHOMO_CONFIG_DIR:-${HOME}/.config/mihomo}/ui}"
+    external_ui_dir="${MIHOMO_EXTERNAL_UI_DIR:-${MIHOMO_CONFIG_DIR:-/etc/mihomo}/ui}"
     external_ui_line="$(sed_escape_replacement "external-ui: ${external_ui_dir}")"
   else
     external_ui_line=""
   fi
 
-  render_proxy_template "${template}" "${target}" 0600 \
+  render_proxy_template_root "${template}" "${target}" 0600 \
     -e "s/__MIHOMO_MIXED_PORT__/$(sed_escape_replacement "${MIHOMO_MIXED_PORT:-7890}")/g" \
     -e "s/__MIHOMO_ALLOW_LAN__/${allow_lan}/g" \
     -e "s/__MIHOMO_BIND_ADDRESS__/$(sed_escape_replacement "${MIHOMO_BIND_ADDRESS:-127.0.0.1}")/g" \
@@ -141,8 +195,17 @@ render_default_sing_box_config() {
 
 mihomo_config_has_placeholder_subscription() {
   local config_file="$1"
-  [[ -f "${config_file}" ]] || return 1
-  grep -Fq "https://example.com/your-subscription-url" "${config_file}"
+  [[ -e "${config_file}" ]] || return 1
+
+  if [[ "${DRY_RUN:-0}" -eq 1 ]]; then
+    return 1
+  fi
+
+  if [[ -r "${config_file}" ]]; then
+    grep -Fq "https://example.com/your-subscription-url" "${config_file}"
+  else
+    sudo grep -Fq "https://example.com/your-subscription-url" "${config_file}"
+  fi
 }
 
 install_proxy_env() {
@@ -185,58 +248,32 @@ install_mihomo() {
 }
 
 configure_mihomo() {
-  local config_file="${MIHOMO_CONFIG_FILE:-${HOME}/.config/mihomo/config.yaml}"
+  local config_file="${MIHOMO_CONFIG_FILE:-/etc/mihomo/config.yaml}"
   local config_dir="${MIHOMO_CONFIG_DIR:-$(dirname "${config_file}")}"
-  local service_dir="${HOME}/.config/systemd/user"
-  local service_file="${service_dir}/archdevkit-mihomo.service"
 
   log_info "配置 Mihomo：${config_file}"
-  mkdir -p "${config_dir}" "${config_dir}/providers" "${config_dir}/ruleset"
+  run_sudo mkdir -p "${config_dir}" "${config_dir}/providers" "${config_dir}/ruleset"
   if is_default_mihomo_config_source; then
     render_default_mihomo_config "${config_file}"
   elif [[ "${MIHOMO_CONFIG_SOURCE:-}" == *.tpl && "${MIHOMO_CONFIG_SOURCE:-}" != http://* && "${MIHOMO_CONFIG_SOURCE:-}" != https://* ]]; then
     render_mihomo_config_template "${MIHOMO_CONFIG_SOURCE}" "${config_file}"
-  elif proxy_config_source_to_file "${MIHOMO_CONFIG_SOURCE:-}" "${config_file}"; then
+  elif proxy_config_source_to_root_file "${MIHOMO_CONFIG_SOURCE:-}" "${config_file}" 0600; then
     :
   else
     render_default_mihomo_config "${config_file}"
   fi
-
-  mkdir -p "${service_dir}"
-  if [[ "${DRY_RUN:-0}" -eq 1 ]]; then
-    echo "+ write ${service_file}"
-    return 0
-  fi
-
-  backup_path "${service_file}"
-  cat > "${service_file}" <<EOF
-[Unit]
-Description=ArchDevKit Mihomo Proxy
-After=network-online.target
-Wants=network-online.target
-
-[Service]
-Type=simple
-WorkingDirectory=${config_dir}
-ExecStart=/usr/bin/mihomo -d ${config_dir}
-Restart=on-failure
-RestartSec=3
-
-[Install]
-WantedBy=default.target
-EOF
 }
 
 install_metacubexd() {
   local package="${METACUBEXD_PACKAGE:-metacubexd-bin}"
   local source_root="${METACUBEXD_WEB_ROOT:-/usr/share/metacubexd}"
-  local target_root="${MIHOMO_EXTERNAL_UI_DIR:-${MIHOMO_CONFIG_DIR:-${HOME}/.config/mihomo}/ui}"
+  local target_root="${MIHOMO_EXTERNAL_UI_DIR:-${MIHOMO_CONFIG_DIR:-/etc/mihomo}/ui}"
 
   log_info "安装 MetaCubeXD 面板：${package}"
   install_package_or_aur "${package}"
 
   if [[ "${DRY_RUN:-0}" -eq 1 ]]; then
-    echo "+ install MetaCubeXD UI ${source_root} -> ${target_root}"
+    echo "+ sudo install MetaCubeXD UI ${source_root} -> ${target_root}"
     return 0
   fi
 
@@ -244,9 +281,9 @@ install_metacubexd() {
     log_warn "未找到 MetaCubeXD 静态入口：${source_root}/index.html，请检查面板包安装路径"
 
   if [[ -f "${source_root}/index.html" ]]; then
-    rm -rf "${target_root}"
-    mkdir -p "$(dirname "${target_root}")"
-    cp -a "${source_root}" "${target_root}"
+    run_sudo rm -rf "${target_root}"
+    run_sudo mkdir -p "$(dirname "${target_root}")"
+    run_sudo cp -a "${source_root}" "${target_root}"
     log_info "MetaCubeXD UI 已安装到：${target_root}"
   fi
 }
@@ -318,19 +355,38 @@ enable_user_service() {
     log_warn "用户服务启用失败，可稍后手动执行：systemctl --user enable --now ${service}"
 }
 
+enable_system_service() {
+  local service="$1"
+  [[ -n "${service}" ]] || die "systemd 系统服务名为空"
+
+  if [[ "${DRY_RUN:-0}" -eq 1 ]]; then
+    echo "+ sudo systemctl daemon-reload"
+    echo "+ sudo systemctl enable --now ${service}"
+    return 0
+  fi
+
+  run_sudo systemctl daemon-reload || \
+    log_warn "systemd 服务刷新失败，请稍后手动执行：sudo systemctl daemon-reload"
+  run_sudo systemctl enable --now "${service}" || \
+    log_warn "系统服务启用失败，可稍后手动执行：sudo systemctl enable --now ${service}"
+}
+
 enable_proxy_service_if_needed() {
   [[ "${PROXY_AUTO_ENABLE_SERVICE:-0}" -eq 1 ]] || {
     log_warn "当前配置不自动启用 Proxy 服务"
     return 0
   }
 
-  if [[ "${PROXY_CORE:-mihomo}" == "mihomo" ]] && mihomo_config_has_placeholder_subscription "${MIHOMO_CONFIG_FILE:-${HOME}/.config/mihomo/config.yaml}"; then
+  if [[ "${PROXY_CORE:-mihomo}" == "mihomo" ]] && mihomo_config_has_placeholder_subscription "${MIHOMO_CONFIG_FILE:-/etc/mihomo/config.yaml}"; then
     log_warn "检测到默认 Mihomo 配置仍使用示例订阅地址，已跳过自动启动服务"
     log_warn "请先替换 proxy-providers.airport.url，或使用 --mihomo-config 指定自己的配置"
     return 0
   fi
 
-  enable_user_service "$(proxy_service_name)"
+  case "${PROXY_CORE:-mihomo}" in
+    mihomo) enable_system_service "$(proxy_service_name)" ;;
+    sing-box) enable_user_service "$(proxy_service_name)" ;;
+  esac
 }
 
 verify_proxy_env() {
@@ -338,10 +394,14 @@ verify_proxy_env() {
   case "${PROXY_CORE:-mihomo}" in
     mihomo)
       run_cmd mihomo -v || true
+      log_info "Mihomo 配置目录：${MIHOMO_CONFIG_DIR:-/etc/mihomo}"
+      log_info "Mihomo 配置文件：${MIHOMO_CONFIG_FILE:-/etc/mihomo/config.yaml}"
+      log_info "Mihomo 系统服务：${MIHOMO_SERVICE_NAME:-mihomo.service}"
       log_info "Mihomo mixed-port：127.0.0.1:${MIHOMO_MIXED_PORT:-7890}"
       log_info "Mihomo 控制接口：http://${MIHOMO_CONTROLLER_HOST:-127.0.0.1}:${MIHOMO_CONTROLLER_PORT:-9090}"
       if [[ "${ENABLE_METACUBEXD:-0}" -eq 1 ]]; then
         log_info "MetaCubeXD 面板由 Mihomo 托管：http://${MIHOMO_CONTROLLER_HOST:-127.0.0.1}:${MIHOMO_CONTROLLER_PORT:-9090}/ui/"
+        log_info "MetaCubeXD UI 目录：${MIHOMO_EXTERNAL_UI_DIR:-${MIHOMO_CONFIG_DIR:-/etc/mihomo}/ui}"
       fi
       ;;
     sing-box)
