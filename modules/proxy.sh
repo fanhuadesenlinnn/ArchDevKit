@@ -102,12 +102,13 @@ render_proxy_template() {
 
 render_mihomo_config_template() {
   local template="$1" target="$2"
-  local allow_lan secret external_ui_line
+  local allow_lan secret external_ui_line external_ui_dir
 
   allow_lan="$(sed_escape_replacement "$(bool_to_yaml "${MIHOMO_ALLOW_LAN:-0}")")"
   secret="$(sed_escape_replacement "$(quote_yaml_string "${MIHOMO_SECRET:-}")")"
   if [[ "${ENABLE_METACUBEXD:-0}" -eq 1 ]]; then
-    external_ui_line="$(sed_escape_replacement "external-ui: ${METACUBEXD_WEB_ROOT:-/usr/share/metacubexd}")"
+    external_ui_dir="${MIHOMO_EXTERNAL_UI_DIR:-${MIHOMO_CONFIG_DIR:-${HOME}/.config/mihomo}/ui}"
+    external_ui_line="$(sed_escape_replacement "external-ui: ${external_ui_dir}")"
   else
     external_ui_line=""
   fi
@@ -228,16 +229,26 @@ EOF
 
 install_metacubexd() {
   local package="${METACUBEXD_PACKAGE:-metacubexd-bin}"
+  local source_root="${METACUBEXD_WEB_ROOT:-/usr/share/metacubexd}"
+  local target_root="${MIHOMO_EXTERNAL_UI_DIR:-${MIHOMO_CONFIG_DIR:-${HOME}/.config/mihomo}/ui}"
+
   log_info "安装 MetaCubeXD 面板：${package}"
   install_package_or_aur "${package}"
 
   if [[ "${DRY_RUN:-0}" -eq 1 ]]; then
-    echo "+ test -f ${METACUBEXD_WEB_ROOT:-/usr/share/metacubexd}/index.html"
+    echo "+ install MetaCubeXD UI ${source_root} -> ${target_root}"
     return 0
   fi
 
-  [[ -f "${METACUBEXD_WEB_ROOT:-/usr/share/metacubexd}/index.html" ]] || \
-    log_warn "未找到 MetaCubeXD 静态入口：${METACUBEXD_WEB_ROOT:-/usr/share/metacubexd}/index.html，请检查面板包安装路径"
+  [[ -f "${source_root}/index.html" ]] || \
+    log_warn "未找到 MetaCubeXD 静态入口：${source_root}/index.html，请检查面板包安装路径"
+
+  if [[ -f "${source_root}/index.html" ]]; then
+    rm -rf "${target_root}"
+    mkdir -p "$(dirname "${target_root}")"
+    cp -a "${source_root}" "${target_root}"
+    log_info "MetaCubeXD UI 已安装到：${target_root}"
+  fi
 }
 
 install_sing_box() {
@@ -315,7 +326,7 @@ enable_proxy_service_if_needed() {
 
   if [[ "${PROXY_CORE:-mihomo}" == "mihomo" ]] && mihomo_config_has_placeholder_subscription "${MIHOMO_CONFIG_FILE:-${HOME}/.config/mihomo/config.yaml}"; then
     log_warn "检测到默认 Mihomo 配置仍使用示例订阅地址，已跳过自动启动服务"
-    log_warn "请先替换 proxy-providers.all-proxies.url，或使用 --mihomo-config 指定自己的配置"
+    log_warn "请先替换 proxy-providers.airport.url，或使用 --mihomo-config 指定自己的配置"
     return 0
   fi
 
