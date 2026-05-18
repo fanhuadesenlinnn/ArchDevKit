@@ -176,6 +176,9 @@ show_config() {
   echo "代理核心:             ${PROXY_CORE}"
   echo "自动启用服务:         $(bool_text "${PROXY_AUTO_ENABLE_SERVICE}")"
   echo "Mihomo 包:            ${MIHOMO_PACKAGE}"
+  echo "Mihomo 系统服务:      ${MIHOMO_SERVICE_NAME:-mihomo.service}"
+  echo "Mihomo 配置目录:      ${MIHOMO_CONFIG_DIR:-/etc/mihomo}"
+  echo "Mihomo 配置文件:      ${MIHOMO_CONFIG_FILE:-/etc/mihomo/config.yaml}"
   echo "Mihomo 配置来源:      ${MIHOMO_CONFIG_SOURCE:-生成基础模板}"
   echo "Mihomo mixed-port:    ${MIHOMO_MIXED_PORT}"
   echo "Mihomo allow-lan:     $(bool_text "${MIHOMO_ALLOW_LAN}")"
@@ -184,6 +187,7 @@ show_config() {
   echo "Mihomo DNS 监听:      ${MIHOMO_DNS_LISTEN}"
   if [[ "${PROXY_CORE:-mihomo}" == "mihomo" ]]; then
     echo "MetaCubeXD:           $(bool_text "${ENABLE_METACUBEXD}")"
+    echo "MetaCubeXD UI 目录:   ${MIHOMO_EXTERNAL_UI_DIR:-${MIHOMO_CONFIG_DIR:-/etc/mihomo}/ui}"
     echo "MetaCubeXD 地址:      http://${MIHOMO_CONTROLLER_HOST}:${MIHOMO_CONTROLLER_PORT}/ui/"
   fi
   echo "sing-box 包:          ${SING_BOX_PACKAGE}"
@@ -272,6 +276,8 @@ show_plan() {
     echo "  Proxy:            $(bool_text "${ENABLE_PROXY}") / ${PROXY_CORE}"
   fi
   if [[ "${PROXY_CORE:-mihomo}" == "mihomo" ]]; then
+    echo "  Mihomo 配置:      ${MIHOMO_CONFIG_FILE:-/etc/mihomo/config.yaml}"
+    echo "  Mihomo 服务:      ${MIHOMO_SERVICE_NAME:-mihomo.service}"
     echo "  MetaCubeXD:       $(bool_text "${ENABLE_METACUBEXD}")"
   fi
   echo "----------------------------------------------------------"
@@ -329,7 +335,8 @@ show_summary() {
   echo "2. 如果加入了 docker 用户组，请注销或重启后再使用 docker"
   echo "3. 如果 Neovim 插件同步失败，可执行：nvim +Lazy sync"
   echo "4. 如果启用了 SDDM，请重启后在登录界面选择 Hyprland"
-  echo "5. 如果安装了 Proxy，可用 systemctl --user status archdevkit-mihomo 或 archdevkit-sing-box 查看服务"
+  echo "5. 如果安装了 Mihomo，可用 sudo systemctl status ${MIHOMO_SERVICE_NAME:-mihomo.service} 查看服务"
+  echo "6. 如果安装了 sing-box，可用 systemctl --user status archdevkit-sing-box 查看服务"
   echo "----------------------------------------------------------"
 }
 
