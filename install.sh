@@ -187,7 +187,7 @@ show_config() {
   echo "Mihomo DNS 监听:      ${MIHOMO_DNS_LISTEN}"
   if [[ "${PROXY_CORE:-mihomo}" == "mihomo" ]]; then
     echo "MetaCubeXD:           $(bool_text "${ENABLE_METACUBEXD}")"
-    echo "MetaCubeXD UI 目录:   ${MIHOMO_EXTERNAL_UI_DIR:-${MIHOMO_CONFIG_DIR:-/etc/mihomo}/ui}"
+    echo "MetaCubeXD UI 目录:   ${MIHOMO_EXTERNAL_UI_DIR:-${MIHOMO_STATE_DIR:-/var/lib/mihomo}/ui}"
     echo "MetaCubeXD 地址:      http://${MIHOMO_CONTROLLER_HOST}:${MIHOMO_CONTROLLER_PORT}/ui/"
   fi
   echo "sing-box 包:          ${SING_BOX_PACKAGE}"
@@ -205,11 +205,39 @@ module_desc() {
     nvim) echo "Neovim + 个人配置" ;;
     docker) echo "Docker / Compose" ;;
     fonts) echo "字体环境" ;;
-    shell) echo "Zsh / Oh My Zsh / Powerlevel10k" ;;
-    desktop) echo "Hyprland 桌面环境" ;;
+    shell|shell_zsh) echo "Zsh / Oh My Zsh / Powerlevel10k" ;;
+    desktop|desktop_hyprland) echo "Hyprland 桌面环境" ;;
     proxy) echo "Proxy 代理环境" ;;
     *) echo "$1" ;;
   esac
+}
+
+module_key() {
+  case "$1" in
+    shell|zsh) echo "shell_zsh" ;;
+    desktop|hyprland) echo "desktop_hyprland" ;;
+    *) echo "$1" ;;
+  esac
+}
+
+plan_has_module() {
+  local modules_text="$1" wanted
+  wanted="$(module_key "$2")"
+  local m
+  for m in ${modules_text}; do
+    [[ "$(module_key "${m}")" == "${wanted}" ]] && return 0
+  done
+  return 1
+}
+
+plan_has_any_module() {
+  local modules_text="$1"
+  shift
+  local m
+  for m in "$@"; do
+    plan_has_module "${modules_text}" "${m}" && return 0
+  done
+  return 1
 }
 
 modules_for_command() {
@@ -255,30 +283,70 @@ show_plan() {
   done
   echo
   echo "关键配置:"
-  echo "  GitHub 代理:      $(bool_text "${ENABLE_GITHUB_PROXY}")"
-  echo "  GitHub 代理地址:  ${GITHUB_PROXY}"
-  echo "  npm 源:           ${NPM_REGISTRY}"
-  echo "  pip 源:           ${PIP_INDEX_URL}"
-  echo "  Node.js/npm:      ${NODE_VERSION} / ${NPM_VERSION}"
-  echo "  Python/Go:        ${PYTHON_VERSION} / ${GO_VERSION}"
-  echo "  Neovim 仓库:      ${NVIM_REPO}"
-  echo "  Neovim 实际下载:  $(github_proxy_url "${NVIM_REPO}")"
-  echo "  Powerlevel10k:    $(bool_text "${INSTALL_POWERLEVEL10K}")"
-  echo "  Hyprland SDDM:    $(bool_text "${ENABLE_SDDM}")"
-  echo "  浏览器:           ${BROWSER_DISPLAY_NAME:-${BROWSER_APP}} (${BROWSER_PACKAGE})"
-  echo "  输入法:           Fcitx5 + ${INPUT_METHOD_ENGINE} (${RIME_SCHEMA})"
-  if [[ "${INPUT_METHOD_ENGINE:-rime}" == "rime" ]]; then
-    echo "  Rime 配置:        $(bool_text "${INSTALL_RIME_CONFIG}") / ${RIME_CONFIG_REPO:-未设置}"
+  echo "  系统软件包:       刷新并执行 pacman -Syu"
+  echo "  基础工具:         base-devel git curl wget unzip tar gzip xz jq ripgrep fd fzf openssh"
+  if plan_has_module "${modules_text}" "archlinuxcn"; then
+    echo "  archlinuxcn 源:   ${ARCHLINUXCN_SERVER}"
+    echo "  mirrorlist 包:    $(bool_text "${INSTALL_ARCHLINUXCN_MIRRORLIST}")"
   fi
-  if [[ " ${modules_text} " == *" proxy "* ]]; then
-    echo "  Proxy:            本次安装 / ${PROXY_CORE}"
-  else
-    echo "  Proxy:            $(bool_text "${ENABLE_PROXY}") / ${PROXY_CORE}"
+  if plan_has_module "${modules_text}" "git"; then
+    echo "  Git 默认分支:     main"
+    echo "  GitHub CLI:       安装 gh，登录需稍后手动执行 gh auth login"
   fi
-  if [[ "${PROXY_CORE:-mihomo}" == "mihomo" ]]; then
-    echo "  Mihomo 配置:      ${MIHOMO_CONFIG_FILE:-/etc/mihomo/config.yaml}"
-    echo "  Mihomo 服务:      ${MIHOMO_SERVICE_NAME:-mihomo.service}"
-    echo "  MetaCubeXD:       $(bool_text "${ENABLE_METACUBEXD}")"
+  if plan_has_module "${modules_text}" "runtime"; then
+    echo "  管理工具:         ${RUNTIME_MANAGER}"
+    echo "  Node.js/npm:      ${NODE_VERSION} / ${NPM_VERSION}"
+    echo "  Python/Go:        ${PYTHON_VERSION} / ${GO_VERSION}"
+    echo "  npm 源:           ${NPM_REGISTRY}"
+    echo "  pip 源:           ${PIP_INDEX_URL}"
+    echo "  Corepack:         $(bool_text "${ENABLE_COREPACK}")"
+  fi
+  if plan_has_any_module "${modules_text}" "nvim" "shell" "desktop"; then
+    echo "  GitHub 代理:      $(bool_text "${ENABLE_GITHUB_PROXY}")"
+    echo "  GitHub 代理地址:  ${GITHUB_PROXY}"
+  fi
+  if plan_has_module "${modules_text}" "nvim"; then
+    echo "  Neovim 仓库:      ${NVIM_REPO}"
+    echo "  Neovim 实际下载:  $(github_proxy_url "${NVIM_REPO}")"
+    echo "  插件同步:         $(bool_text "${SYNC_NVIM_PLUGINS}")"
+  fi
+  if plan_has_module "${modules_text}" "docker"; then
+    echo "  Docker 服务:      $(bool_text "${ENABLE_DOCKER_SERVICE}")"
+    echo "  加入 docker 组:   $(bool_text "${ADD_USER_TO_DOCKER_GROUP}")"
+    echo "  Docker 镜像源:    $(bool_text "${CONFIGURE_DOCKER_MIRRORS}")"
+  fi
+  if plan_has_module "${modules_text}" "fonts"; then
+    echo "  中文/Emoji 字体:  $(bool_text "${INSTALL_CN_FONTS}")"
+    echo "  Nerd Font:        $(bool_text "${INSTALL_NERD_FONTS}")"
+    echo "  Monaco 字体:      $(bool_text "${INSTALL_MONACO_FONT}")"
+  fi
+  if plan_has_module "${modules_text}" "shell"; then
+    echo "  Oh My Zsh:        $(bool_text "${INSTALL_OH_MY_ZSH}")"
+    echo "  Powerlevel10k:    $(bool_text "${INSTALL_POWERLEVEL10K}")"
+    echo "  p10k 配置:        $(bool_text "${INSTALL_P10K_CONFIG}")"
+    echo "  切换默认 shell:   $(bool_text "${SET_ZSH_AS_DEFAULT}")"
+  fi
+  if plan_has_module "${modules_text}" "desktop"; then
+    echo "  Hyprland SDDM:    $(bool_text "${ENABLE_SDDM}")"
+    echo "  GPU 类型:         ${GPU_TYPE}"
+    echo "  浏览器:           ${BROWSER_DISPLAY_NAME:-${BROWSER_APP}} (${BROWSER_PACKAGE})"
+    echo "  输入法:           Fcitx5 $(bool_text "${ENABLE_FCITX5}") / ${INPUT_METHOD_ENGINE}"
+    if [[ "${INPUT_METHOD_ENGINE:-rime}" == "rime" ]]; then
+      echo "  Rime 方案:        ${RIME_SCHEMA}"
+      echo "  Rime 配置:        $(bool_text "${INSTALL_RIME_CONFIG}") / ${RIME_CONFIG_REPO:-未设置}"
+    fi
+  fi
+  if plan_has_module "${modules_text}" "proxy"; then
+    echo "  Proxy 核心:       ${PROXY_CORE}"
+    echo "  自动启用服务:     $(bool_text "${PROXY_AUTO_ENABLE_SERVICE}")"
+    if [[ "${PROXY_CORE:-mihomo}" == "mihomo" ]]; then
+      echo "  Mihomo 配置:      ${MIHOMO_CONFIG_FILE:-/etc/mihomo/config.yaml}"
+      echo "  Mihomo 服务:      ${MIHOMO_SERVICE_NAME:-mihomo.service}"
+      echo "  MetaCubeXD:       $(bool_text "${ENABLE_METACUBEXD}")"
+    else
+      echo "  sing-box 配置:    ${SING_BOX_CONFIG_FILE:-${HOME}/.config/sing-box/config.json}"
+      echo "  sing-box 服务:    archdevkit-sing-box.service"
+    fi
   fi
   echo "----------------------------------------------------------"
 }
@@ -327,16 +395,83 @@ show_summary() {
   echo "----------------------------------------------------------"
   echo "[执行完成]"
   echo "已处理模块:"
-  local key
-  for key in "${!MODULE_DONE[@]}"; do echo "  - ${key}"; done
+  local key display_key
+  for key in base archlinuxcn git runtime nvim docker fonts shell_zsh desktop_hyprland proxy; do
+    display_key="${key}"
+    [[ "${key}" == "shell_zsh" ]] && display_key="shell"
+    [[ "${key}" == "desktop_hyprland" ]] && display_key="desktop"
+    is_done "${key}" && echo "  - ${display_key} ($(module_desc "${key}"))"
+  done
   echo
   echo "后续建议:"
-  echo "1. 重新打开终端，让 mise / zsh 配置完全生效"
-  echo "2. 如果加入了 docker 用户组，请注销或重启后再使用 docker"
-  echo "3. 如果 Neovim 插件同步失败，可执行：nvim +Lazy sync"
-  echo "4. 如果启用了 SDDM，请重启后在登录界面选择 Hyprland"
-  echo "5. 如果安装了 Mihomo，可用 sudo systemctl status ${MIHOMO_SERVICE_NAME:-mihomo.service} 查看服务"
-  echo "6. 如果安装了 sing-box，可用 systemctl --user status archdevkit-sing-box 查看服务"
+  local tip_no=0 done_count=0
+  for key in base archlinuxcn git runtime nvim docker fonts shell_zsh desktop_hyprland proxy; do
+    is_done "${key}" && done_count=$((done_count + 1))
+  done
+  add_summary_tip() {
+    tip_no=$((tip_no + 1))
+    echo "${tip_no}. $*"
+  }
+
+  if is_done "base" && [[ "${done_count}" -eq 1 ]]; then
+    add_summary_tip "基础工具已经就绪；接下来可按需运行 runtime、nvim、docker、desktop 或 workstation。"
+    add_summary_tip "如果刚完成系统大版本更新，建议重启一次后再继续安装桌面或显卡相关模块。"
+  fi
+  if is_done "archlinuxcn"; then
+    add_summary_tip "archlinuxcn 源已配置；若后续软件查不到，先执行 sudo pacman -Syu 再重试。"
+  fi
+  if is_done "git"; then
+    add_summary_tip "如需使用 GitHub CLI 登录，执行：gh auth login && gh auth setup-git。"
+  fi
+  if is_done "runtime"; then
+    add_summary_tip "重新打开终端，或执行 exec \"\$SHELL\"，让 mise 的 Node.js/npm/Python/Go 配置生效。"
+  fi
+  if is_done "nvim"; then
+    add_summary_tip "首次打开 Neovim 会加载插件；如果同步失败，可执行：nvim +Lazy sync。"
+  fi
+  if is_done "docker"; then
+    if [[ "${ADD_USER_TO_DOCKER_GROUP:-0}" -eq 1 ]]; then
+      add_summary_tip "当前用户已加入 docker 组；请注销或重启后再直接运行 docker 命令。"
+    fi
+    add_summary_tip "Docker 服务状态可用 sudo systemctl status docker 查看。"
+  fi
+  if is_done "fonts"; then
+    add_summary_tip "字体缓存已刷新；若终端或浏览器仍未显示新字体，重启对应应用即可。"
+  fi
+  if is_done "shell_zsh"; then
+    add_summary_tip "Zsh 配置已写入 ~/.zshrc；默认 shell 切换需要重新登录后生效。"
+  fi
+  if is_done "desktop_hyprland"; then
+    if [[ "${ENABLE_SDDM:-0}" -eq 1 ]]; then
+      add_summary_tip "SDDM 已启用；重启后在登录界面选择 Hyprland 会话。"
+    else
+      add_summary_tip "Hyprland 已安装但未启用 SDDM；可用 Hyprland 命令从 tty 手动启动会话。"
+    fi
+    if [[ "${ENABLE_FCITX5:-0}" -eq 1 ]]; then
+      add_summary_tip "输入法环境变量已写入；如果 Rime/Fcitx5 未出现，注销重登后再打开 fcitx5-configtool 检查。"
+    fi
+  fi
+  if is_done "proxy"; then
+    case "${PROXY_CORE:-mihomo}" in
+      mihomo)
+        add_summary_tip "Mihomo 配置文件：${MIHOMO_CONFIG_FILE:-/etc/mihomo/config.yaml}。"
+        add_summary_tip "Mihomo 服务状态可用 sudo systemctl status ${MIHOMO_SERVICE_NAME:-mihomo.service} 查看。"
+        if [[ "${ENABLE_METACUBEXD:-0}" -eq 1 ]]; then
+          add_summary_tip "MetaCubeXD 面板地址：http://${MIHOMO_CONTROLLER_HOST:-127.0.0.1}:${MIHOMO_CONTROLLER_PORT:-9090}/ui/。"
+        fi
+        if [[ "${MIHOMO_CONFIG_SOURCE:-}" == "${SCRIPT_DIR}/files/mihomo/config.yaml.tpl" || -z "${MIHOMO_CONFIG_SOURCE:-}" ]]; then
+          add_summary_tip "默认 Mihomo 模板含示例订阅地址；正式使用前请替换 proxy-providers.airport.url。"
+        fi
+        ;;
+      sing-box)
+        add_summary_tip "sing-box 配置文件：${SING_BOX_CONFIG_FILE:-${HOME}/.config/sing-box/config.json}。"
+        add_summary_tip "sing-box 服务状态可用 systemctl --user status archdevkit-sing-box 查看。"
+        ;;
+    esac
+  fi
+  if [[ "${tip_no}" -eq 0 ]]; then
+    add_summary_tip "没有额外动作需要处理。"
+  fi
   echo "----------------------------------------------------------"
 }
 

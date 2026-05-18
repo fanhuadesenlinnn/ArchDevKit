@@ -112,6 +112,70 @@ quote_yaml_string() {
   printf '"%s"' "${value}"
 }
 
+mihomo_unit_file() {
+  local service="${1:-${MIHOMO_SERVICE_NAME:-mihomo.service}}" unit_file
+
+  if [[ "${DRY_RUN:-0}" -eq 1 ]]; then
+    printf "/usr/lib/systemd/system/%s" "${service}"
+    return 0
+  fi
+
+  unit_file="$(systemctl show -P FragmentPath "${service}" 2>/dev/null || true)"
+  [[ -n "${unit_file}" ]] && printf "%s" "${unit_file}"
+}
+
+mihomo_unit_setting_value() {
+  local unit_file="$1" key="$2"
+  [[ -n "${unit_file}" && -r "${unit_file}" ]] || return 1
+  sed -n "s/^${key}=//p" "${unit_file}" | tail -n 1
+}
+
+mihomo_unit_has_setting() {
+  local unit_file="$1" pattern="$2"
+  [[ -n "${unit_file}" && -r "${unit_file}" ]] || return 1
+  grep -Eq "${pattern}" "${unit_file}"
+}
+
+mihomo_state_dir() {
+  local service="${MIHOMO_SERVICE_NAME:-mihomo.service}" unit_file state_name
+
+  [[ -n "${MIHOMO_STATE_DIR:-}" ]] && {
+    printf "%s" "${MIHOMO_STATE_DIR}"
+    return 0
+  }
+
+  unit_file="$(mihomo_unit_file "${service}")"
+  if [[ -n "${unit_file}" ]]; then
+    state_name="$(mihomo_unit_setting_value "${unit_file}" "StateDirectory" | awk '{print $1}')"
+    if [[ -n "${state_name}" ]]; then
+      if [[ "${state_name}" == /* ]]; then
+        printf "%s" "${state_name}"
+      else
+        printf "/var/lib/%s" "${state_name}"
+      fi
+      return 0
+    fi
+  fi
+
+  printf "/var/lib/mihomo"
+}
+
+mihomo_safe_external_ui_dir() {
+  local state_dir requested
+  state_dir="$(mihomo_state_dir)"
+  requested="${MIHOMO_EXTERNAL_UI_DIR:-${state_dir}/ui}"
+
+  case "${requested}" in
+    "${state_dir}"|"${state_dir}"/*)
+      printf "%s" "${requested}"
+      ;;
+    *)
+      log_warn "Mihomo service 只允许访问 ${state_dir}；MetaCubeXD UI 目录已改为 ${state_dir}/ui" >&2
+      printf "%s/ui" "${state_dir}"
+      ;;
+  esac
+}
+
 render_proxy_template() {
   local template="$1" target="$2" mode="${3:-0600}" tmp_file
   shift 3 || true
@@ -161,7 +225,7 @@ render_mihomo_config_template() {
   allow_lan="$(sed_escape_replacement "$(bool_to_yaml "${MIHOMO_ALLOW_LAN:-0}")")"
   secret="$(sed_escape_replacement "$(quote_yaml_string "${MIHOMO_SECRET:-}")")"
   if [[ "${ENABLE_METACUBEXD:-0}" -eq 1 ]]; then
-    external_ui_dir="${MIHOMO_EXTERNAL_UI_DIR:-${MIHOMO_CONFIG_DIR:-/etc/mihomo}/ui}"
+    external_ui_dir="$(mihomo_safe_external_ui_dir)"
     external_ui_line="$(sed_escape_replacement "external-ui: ${external_ui_dir}")"
   else
     external_ui_line=""
@@ -206,6 +270,89 @@ mihomo_config_has_placeholder_subscription() {
   else
     sudo grep -Fq "https://example.com/your-subscription-url" "${config_file}"
   fi
+}
+
+inspect_mihomo_systemd_service() {
+  local service="${MIHOMO_SERVICE_NAME:-mihomo.service}" unit_file
+  unit_file="$(mihomo_unit_file "${service}")"
+
+  if [[ -z "${unit_file}" ]]; then
+    log_warn "未找到 ${service} 的 systemd unit，稍后启用服务可能失败"
+    return 0
+  fi
+
+  log_info "检测 Mihomo systemd unit：${unit_file}"
+  if mihomo_unit_has_setting "${unit_file}" '^StateDirectory=' && \
+     mihomo_unit_has_setting "${unit_file}" '^LoadCredential=.*config\.ya?ml'; then
+    log_info "检测到 ${service} 使用 StateDirectory + LoadCredential，按服务运行目录校验配置"
+  else
+    log_warn "${service} 未使用预期的 StateDirectory + LoadCredential 模式，请留意发行版包差异"
+  fi
+}
+
+mihomo_stop_failed_service() {
+  local service="${MIHOMO_SERVICE_NAME:-mihomo.service}"
+
+  if [[ "${DRY_RUN:-0}" -eq 1 ]]; then
+    echo "+ sudo systemctl disable --now ${service}"
+    echo "+ sudo systemctl reset-failed ${service}"
+    return 0
+  fi
+
+  run_sudo systemctl disable --now "${service}" || true
+  run_sudo systemctl reset-failed "${service}" || true
+}
+
+mihomo_test_config_for_service() {
+  local config_file="$1" state_dir
+  [[ -n "${config_file}" ]] || die "Mihomo 配置文件为空"
+  state_dir="$(mihomo_state_dir)"
+
+  if [[ "${DRY_RUN:-0}" -eq 1 ]]; then
+    echo "+ sudo install ${config_file} ${state_dir}/config.yaml"
+    echo "+ sudo mihomo -t -d ${state_dir}"
+    echo "+ sudo rm -f ${state_dir}/config.yaml"
+    return 0
+  fi
+
+  require_cmd mihomo
+  run_sudo mkdir -p "${state_dir}"
+  if [[ -r "${config_file}" ]]; then
+    run_sudo install -m 0600 "${config_file}" "${state_dir}/config.yaml"
+  else
+    sudo install -m 0600 "${config_file}" "${state_dir}/config.yaml"
+  fi
+
+  if run_sudo mihomo -t -d "${state_dir}"; then
+    run_sudo rm -f "${state_dir}/config.yaml"
+    return 0
+  fi
+
+  run_sudo rm -f "${state_dir}/config.yaml"
+  return 1
+}
+
+mihomo_service_ready() {
+  local config_file="${MIHOMO_CONFIG_FILE:-/etc/mihomo/config.yaml}"
+
+  inspect_mihomo_systemd_service
+
+  if mihomo_config_has_placeholder_subscription "${config_file}"; then
+    log_warn "Mihomo 配置仍使用示例订阅地址，不能保证服务启动成功"
+    log_warn "请先替换 proxy-providers.airport.url，或使用 --mihomo-config 指定自己的配置"
+    mihomo_stop_failed_service
+    return 1
+  fi
+
+  log_info "按 mihomo.service 的运行方式测试配置"
+  if mihomo_test_config_for_service "${config_file}"; then
+    return 0
+  fi
+
+  log_warn "Mihomo 配置测试失败，已跳过自动启动服务，避免 systemd 反复重启"
+  log_warn "可查看详细日志：sudo journalctl -u ${MIHOMO_SERVICE_NAME:-mihomo.service} -n 80 --no-pager"
+  mihomo_stop_failed_service
+  return 1
 }
 
 install_proxy_env() {
@@ -267,7 +414,8 @@ configure_mihomo() {
 install_metacubexd() {
   local package="${METACUBEXD_PACKAGE:-metacubexd-bin}"
   local source_root="${METACUBEXD_WEB_ROOT:-/usr/share/metacubexd}"
-  local target_root="${MIHOMO_EXTERNAL_UI_DIR:-${MIHOMO_CONFIG_DIR:-/etc/mihomo}/ui}"
+  local target_root
+  target_root="$(mihomo_safe_external_ui_dir)"
 
   log_info "安装 MetaCubeXD 面板：${package}"
   install_package_or_aur "${package}"
@@ -362,13 +510,26 @@ enable_system_service() {
   if [[ "${DRY_RUN:-0}" -eq 1 ]]; then
     echo "+ sudo systemctl daemon-reload"
     echo "+ sudo systemctl enable --now ${service}"
+    echo "+ sudo systemctl is-active --quiet ${service}"
     return 0
   fi
 
   run_sudo systemctl daemon-reload || \
     log_warn "systemd 服务刷新失败，请稍后手动执行：sudo systemctl daemon-reload"
-  run_sudo systemctl enable --now "${service}" || \
+  run_sudo systemctl enable --now "${service}" || {
     log_warn "系统服务启用失败，可稍后手动执行：sudo systemctl enable --now ${service}"
+    return 1
+  }
+
+  sleep 2
+  if run_sudo systemctl is-active --quiet "${service}"; then
+    log_info "系统服务已启动：${service}"
+    return 0
+  fi
+
+  log_warn "系统服务未保持 active：${service}"
+  run_sudo journalctl -u "${service}" -n 50 --no-pager || true
+  return 1
 }
 
 enable_proxy_service_if_needed() {
@@ -377,14 +538,14 @@ enable_proxy_service_if_needed() {
     return 0
   }
 
-  if [[ "${PROXY_CORE:-mihomo}" == "mihomo" ]] && mihomo_config_has_placeholder_subscription "${MIHOMO_CONFIG_FILE:-/etc/mihomo/config.yaml}"; then
-    log_warn "检测到默认 Mihomo 配置仍使用示例订阅地址，已跳过自动启动服务"
-    log_warn "请先替换 proxy-providers.airport.url，或使用 --mihomo-config 指定自己的配置"
-    return 0
-  fi
-
   case "${PROXY_CORE:-mihomo}" in
-    mihomo) enable_system_service "$(proxy_service_name)" ;;
+    mihomo)
+      if mihomo_service_ready; then
+        enable_system_service "$(proxy_service_name)" || die "Mihomo 服务启动失败，请根据上方日志修正配置后重试"
+      else
+        log_warn "已跳过 Mihomo 服务启动；配置修正后执行：sudo systemctl enable --now ${MIHOMO_SERVICE_NAME:-mihomo.service}"
+      fi
+      ;;
     sing-box) enable_user_service "$(proxy_service_name)" ;;
   esac
 }
@@ -401,7 +562,7 @@ verify_proxy_env() {
       log_info "Mihomo 控制接口：http://${MIHOMO_CONTROLLER_HOST:-127.0.0.1}:${MIHOMO_CONTROLLER_PORT:-9090}"
       if [[ "${ENABLE_METACUBEXD:-0}" -eq 1 ]]; then
         log_info "MetaCubeXD 面板由 Mihomo 托管：http://${MIHOMO_CONTROLLER_HOST:-127.0.0.1}:${MIHOMO_CONTROLLER_PORT:-9090}/ui/"
-        log_info "MetaCubeXD UI 目录：${MIHOMO_EXTERNAL_UI_DIR:-${MIHOMO_CONFIG_DIR:-/etc/mihomo}/ui}"
+        log_info "MetaCubeXD UI 目录：$(mihomo_safe_external_ui_dir)"
       fi
       ;;
     sing-box)
