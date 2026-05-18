@@ -150,8 +150,14 @@ Proxy 是可选模块，默认配置为：
 ```bash
 ENABLE_PROXY=0 # 1=随 workstation 安装，0=不随 workstation 安装；直接执行 proxy 命令不受此项限制
 PROXY_CORE="mihomo" # mihomo / sing-box
+PROXY_AUTO_ENABLE_SERVICE=1 # 1=安装后启用并启动服务，0=只安装和生成配置
+
+MIHOMO_SERVICE_NAME="mihomo.service"
+MIHOMO_CONFIG_DIR="/etc/mihomo"
+MIHOMO_CONFIG_FILE="${MIHOMO_CONFIG_DIR}/config.yaml"
+MIHOMO_EXTERNAL_UI_DIR="${MIHOMO_CONFIG_DIR}/ui"
+
 ENABLE_METACUBEXD=1 # 1=安装 MetaCubeXD 面板，0=不安装面板
-MIHOMO_EXTERNAL_UI_DIR="${MIHOMO_CONFIG_DIR}/ui" # Mihomo external-ui 对应的本地 UI 目录
 ```
 
 单独安装默认 Mihomo + MetaCubeXD：
@@ -172,11 +178,20 @@ bash install.sh workstation --with-proxy
 bash install.sh proxy --proxy-core sing-box
 ```
 
+Mihomo 会按系统级服务方式安装：
+
+- 配置目录：`/etc/mihomo`
+- 配置文件：`/etc/mihomo/config.yaml`
+- UI 目录：`/etc/mihomo/ui`
+- 服务管理：`sudo systemctl enable --now mihomo.service`
+
+脚本不会再为 Mihomo 生成 `~/.config/mihomo` 或 `~/.config/systemd/user/archdevkit-mihomo.service` 之类的用户目录配置。sing-box 目前仍使用用户级配置和 ArchDevKit 自建用户服务。
+
 默认 Mihomo 配置模板来自 `files/mihomo/config.yaml.tpl`，基于日常大陆网络、AI 服务、流媒体、GitHub、游戏平台、广告拦截和懒猫微服兼容整理。
 模板只保留一个机场订阅示例：`proxy-providers.airport.url`。不在模板里写任何示例节点，所有节点都通过订阅连接拉取到 `proxy-providers` 后供策略组使用。
 默认 sing-box 配置模板来自 `files/sing-box/config.json.tpl`。
 
-MetaCubeXD 面板安装后会复制到 `MIHOMO_EXTERNAL_UI_DIR`，默认是 `~/.config/mihomo/ui`，生成的 Mihomo 配置中 `external-ui` 也会指向这个目录。
+MetaCubeXD 面板安装后会复制到 `MIHOMO_EXTERNAL_UI_DIR`，默认是 `/etc/mihomo/ui`，生成的 Mihomo 配置中 `external-ui` 也会指向这个目录。
 
 使用自己的配置文件或订阅 URL 覆盖默认模板：
 
