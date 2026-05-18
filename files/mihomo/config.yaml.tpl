@@ -1,7 +1,9 @@
 # ============================================================
-# Mihomo / Clash Meta 长期使用配置
+# Mihomo / Clash Meta 订阅模板
 # 场景：中国大陆日常使用 + 懒猫微服兼容 + 低维护
-# 提醒：首次使用只需要改下面 proxy-providers.all-proxies.url 为你的订阅链接。
+#
+# 首次使用只需要修改 proxy-providers.airport.url。
+# 不在模板中放示例节点，所有节点都从订阅链接拉取。
 # ============================================================
 
 # ------------------------------
@@ -19,7 +21,7 @@ global-client-fingerprint: chrome
 
 # 外部控制接口。默认仅本机访问，避免局域网裸露控制 API。
 external-controller: __MIHOMO_CONTROLLER_HOST__:__MIHOMO_CONTROLLER_PORT__
-# MetaCubeXD 安装后由 Mihomo 直接托管：http://127.0.0.1:9090/ui/
+# MetaCubeXD 安装后由 Mihomo 托管：http://127.0.0.1:9090/ui/
 __METACUBEXD_EXTERNAL_UI_LINE__
 # 如需局域网访问面板，请改为 0.0.0.0:9090，并务必设置 secret。
 secret: __MIHOMO_SECRET_YAML__
@@ -178,15 +180,15 @@ sniffer:
     - Mijia Cloud
 
 # ------------------------------
-# 代理订阅
+# 代理订阅：只保留一个机场示例
 # ------------------------------
 proxy-providers:
-  all-proxies:
+  airport:
     type: http
-    # 只改这里：替换为你的订阅链接。不要把真实订阅链接提交到公开仓库。
+    # 只改这里：替换为你的机场订阅链接。不要把真实订阅链接提交到公开仓库。
     url: "https://example.com/your-subscription-url"
     interval: 86400
-    path: ./providers/all-proxies.yaml
+    path: ./providers/airport.yaml
     health-check:
       enable: true
       interval: 600
@@ -194,7 +196,7 @@ proxy-providers:
       url: https://www.gstatic.com/generate_204
 
 # ------------------------------
-# 策略组
+# 策略组：不写示例节点，全部从 proxy-providers.airport 读取
 # ------------------------------
 proxy-groups:
   - name: 🚀 节点选择
@@ -203,25 +205,19 @@ proxy-groups:
       - ♻️ 自动选择
       - 🛟 故障转移
       - 🚀 手动切换
-      - 🇭🇰 香港
-      - 🇹🇼 台湾
-      - 🇯🇵 日本
-      - 🇸🇬 新加坡
-      - 🇺🇸 美国
-      - 🌍 其他地区
       - DIRECT
 
   - name: 🚀 手动切换
     type: select
     use:
-      - all-proxies
+      - airport
     proxies:
       - DIRECT
 
   - name: ♻️ 自动选择
     type: url-test
     use:
-      - all-proxies
+      - airport
     url: https://www.gstatic.com/generate_204
     interval: 300
     tolerance: 50
@@ -229,67 +225,13 @@ proxy-groups:
   - name: 🛟 故障转移
     type: fallback
     use:
-      - all-proxies
+      - airport
     url: https://www.gstatic.com/generate_204
     interval: 300
-
-  - name: 🇭🇰 香港
-    type: url-test
-    use:
-      - all-proxies
-    filter: "(?i)港|香港|HK|Hong Kong"
-    url: https://www.gstatic.com/generate_204
-    interval: 300
-    tolerance: 50
-
-  - name: 🇹🇼 台湾
-    type: url-test
-    use:
-      - all-proxies
-    filter: "(?i)台|台湾|TW|Taiwan"
-    url: https://www.gstatic.com/generate_204
-    interval: 300
-    tolerance: 50
-
-  - name: 🇯🇵 日本
-    type: url-test
-    use:
-      - all-proxies
-    filter: "(?i)日|日本|JP|Japan"
-    url: https://www.gstatic.com/generate_204
-    interval: 300
-    tolerance: 50
-
-  - name: 🇸🇬 新加坡
-    type: url-test
-    use:
-      - all-proxies
-    filter: "(?i)新|新加坡|SG|Singapore"
-    url: https://www.gstatic.com/generate_204
-    interval: 300
-    tolerance: 50
-
-  - name: 🇺🇸 美国
-    type: url-test
-    use:
-      - all-proxies
-    filter: "(?i)美|美国|US|United States|America"
-    url: https://www.gstatic.com/generate_204
-    interval: 300
-    tolerance: 50
-
-  - name: 🌍 其他地区
-    type: select
-    use:
-      - all-proxies
-    filter: "^(?!.*(?i:港|香港|HK|Hong Kong|台|台湾|TW|Taiwan|日|日本|JP|Japan|新|新加坡|SG|Singapore|美|美国|US|United States|America)).*$"
 
   - name: 🤖 AI 服务
     type: select
     proxies:
-      - 🇺🇸 美国
-      - 🇯🇵 日本
-      - 🇸🇬 新加坡
       - 🚀 节点选择
       - 🚀 手动切换
 
@@ -297,29 +239,19 @@ proxy-groups:
     type: select
     proxies:
       - 🚀 节点选择
-      - 🇭🇰 香港
-      - 🇹🇼 台湾
-      - 🇯🇵 日本
-      - 🇸🇬 新加坡
-      - 🇺🇸 美国
       - 🚀 手动切换
 
   - name: 💬 Telegram
     type: select
     proxies:
       - 🚀 节点选择
-      - 🇸🇬 新加坡
-      - 🇭🇰 香港
-      - 🇯🇵 日本
       - 🚀 手动切换
 
   - name: 🧰 GitHub
     type: select
     proxies:
       - 🚀 节点选择
-      - 🇭🇰 香港
-      - 🇯🇵 日本
-      - 🇸🇬 新加坡
+      - 🚀 手动切换
       - DIRECT
 
   - name: 🍎 Apple
@@ -339,9 +271,6 @@ proxy-groups:
     proxies:
       - DIRECT
       - 🚀 节点选择
-      - 🇭🇰 香港
-      - 🇯🇵 日本
-      - 🇸🇬 新加坡
 
   - name: 🎯 国内流量
     type: select
