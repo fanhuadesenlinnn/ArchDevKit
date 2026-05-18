@@ -109,10 +109,11 @@ BROWSER_DISPLAY_NAME="Google Chrome"
 # =========================
 ENABLE_PROXY=0 # 1=随 workstation 安装，0=不随 workstation 安装；直接执行 proxy 命令不受此项限制
 PROXY_CORE="mihomo" # mihomo / sing-box
-PROXY_AUTO_ENABLE_SERVICE=1 # 1=安装后启用并启动用户服务，0=只安装和生成配置
+PROXY_AUTO_ENABLE_SERVICE=1 # 1=安装后启用并启动服务，0=只安装和生成配置
 
 MIHOMO_PACKAGE="mihomo"
-MIHOMO_CONFIG_DIR="${HOME}/.config/mihomo"
+MIHOMO_SERVICE_NAME="mihomo.service"
+MIHOMO_CONFIG_DIR="/etc/mihomo"
 MIHOMO_CONFIG_FILE="${MIHOMO_CONFIG_DIR}/config.yaml"
 MIHOMO_CONFIG_SOURCE="${SCRIPT_DIR}/files/mihomo/config.yaml.tpl" # 本地 config.yaml/.tpl 或 URL；为空则渲染默认模板
 MIHOMO_MIXED_PORT=7890
