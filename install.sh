@@ -268,6 +268,15 @@ modules_for_desktop() {
   echo "${modules}"
 }
 
+modules_for_proxy() {
+  local modules=""
+  if proxy_needs_archlinuxcn; then
+    modules="$(append_plan_module "${modules}" "archlinuxcn")"
+  fi
+  modules="$(append_plan_module "${modules}" "proxy")"
+  echo "${modules}"
+}
+
 plan_uses_github_proxy() {
   local modules_text="$1"
 
@@ -306,7 +315,7 @@ modules_for_command() {
     docker) echo "docker" ;;
     fonts) echo "fonts" ;;
     shell|zsh) modules_for_shell ;;
-    proxy) echo "proxy" ;;
+    proxy) modules_for_proxy ;;
     desktop|hyprland) modules_for_desktop ;;
     dev) echo "base git runtime nvim docker" ;;
     workstation)

@@ -38,11 +38,7 @@ desktop_needs_rime_repo() {
 }
 
 desktop_needs_archlinuxcn_for_browser() {
-  local package="${BROWSER_PACKAGE:-google-chrome}"
-  [[ "${package}" == "google-chrome" && "${INSTALL_ARCHLINUXCN:-0}" -eq 1 ]] || return 1
-  pacman_package_installed "${package}" && return 1
-  pacman_package_available "${package}" && return 1
-  return 0
+  package_needs_archlinuxcn_repo "${BROWSER_PACKAGE:-google-chrome}"
 }
 
 install_hyprland_packages() {
@@ -91,28 +87,17 @@ install_browser_package() {
   local package="${BROWSER_PACKAGE:-google-chrome}"
   [[ -n "${package}" ]] || die "浏览器安装包为空"
 
-  if pacman_package_installed "${package}"; then
-    log_info "浏览器已安装：${package}"
-    return 0
-  fi
-
-  if [[ "${package}" == "google-chrome" && "${INSTALL_ARCHLINUXCN:-0}" -eq 1 ]] && ! pacman_package_available "${package}"; then
-    log_info "Google Chrome 不在当前 pacman 源中，先确保 archlinuxcn 源可用"
-    ensure_archlinuxcn
-  fi
-
-  if pacman_package_available "${package}"; then
-    pacman_install "${package}"
+  if install_package_from_pacman_prefer_archlinuxcn "${package}"; then
     return 0
   fi
 
   if [[ "${package}" == "google-chrome" ]]; then
-    log_warn "当前 pacman 源未提供 google-chrome，改用 AUR 构建安装"
+    log_warn "当前 pacman / archlinuxcn 源仍未提供 google-chrome，最后尝试 AUR 构建安装"
     install_aur_package "${package}"
     return 0
   fi
 
-  die "当前 pacman 源未找到浏览器安装包：${package}"
+  die "当前 pacman / archlinuxcn 源未找到浏览器安装包：${package}"
 }
 
 install_gpu_packages_if_needed() {
