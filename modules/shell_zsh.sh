@@ -8,8 +8,11 @@ install_shell_zsh() {
     return 0
   fi
 
-  ensure_base
-  ensure_fonts
+  if shell_needs_fonts; then
+    ensure_fonts
+  else
+    log_info "当前 Zsh 配置不依赖字体模块，跳过字体安装"
+  fi
 
   log_info "开始安装 Zsh / Oh My Zsh 环境"
   pacman_install zsh zsh-completions fzf
@@ -17,16 +20,24 @@ install_shell_zsh() {
   if [[ "${INSTALL_OH_MY_ZSH:-0}" -eq 1 ]]; then
     install_oh_my_zsh
     install_zsh_plugins
+  else
+    log_warn "当前配置未启用 Oh My Zsh，跳过 Oh My Zsh 与插件安装"
   fi
 
   if [[ "${INSTALL_POWERLEVEL10K:-0}" -eq 1 ]]; then
-    install_powerlevel10k
+    if [[ "${INSTALL_OH_MY_ZSH:-0}" -eq 1 ]]; then
+      install_powerlevel10k
+    else
+      log_warn "Powerlevel10k 配置依赖 Oh My Zsh，已跳过主题安装"
+    fi
   fi
 
   render_zshrc
 
-  if [[ "${INSTALL_P10K_CONFIG:-0}" -eq 1 ]]; then
+  if [[ "${INSTALL_P10K_CONFIG:-0}" -eq 1 && "${INSTALL_POWERLEVEL10K:-0}" -eq 1 ]]; then
     install_p10k_config
+  elif [[ "${INSTALL_P10K_CONFIG:-0}" -eq 1 ]]; then
+    log_warn "未启用 Powerlevel10k，跳过 p10k 配置安装"
   fi
 
   change_default_shell_if_needed
@@ -34,6 +45,14 @@ install_shell_zsh() {
 
   mark_done "shell_zsh"
   log_info "Zsh 环境安装完成"
+}
+
+shell_needs_fonts() {
+  [[ "${INSTALL_OH_MY_ZSH:-0}" -eq 1 && "${INSTALL_POWERLEVEL10K:-0}" -eq 1 ]]
+}
+
+shell_needs_repo_clone() {
+  [[ "${INSTALL_OH_MY_ZSH:-0}" -eq 1 ]]
 }
 
 install_oh_my_zsh() {
@@ -67,10 +86,13 @@ render_zshrc() {
     return 0
   fi
 
-  cat > "${HOME}/.zshrc" <<EOF
+  cat > "${HOME}/.zshrc" <<'EOF'
 # ArchDevKit 生成的 zsh 配置
 # 如需修改主题或插件，建议先备份该文件。
+EOF
 
+  if [[ "${INSTALL_OH_MY_ZSH:-0}" -eq 1 ]]; then
+    cat >> "${HOME}/.zshrc" <<EOF
 export ZSH="\${HOME}/.oh-my-zsh"
 
 ZSH_THEME="${ZSH_THEME_NAME:-powerlevel10k/powerlevel10k}"
@@ -80,9 +102,19 @@ plugins=(${ZSH_PLUGINS:-git zsh-autosuggestions zsh-syntax-highlighting fzf dock
 source "\${ZSH}/oh-my-zsh.sh"
 
 [[ -f "\${HOME}/.p10k.zsh" ]] && source "\${HOME}/.p10k.zsh"
+EOF
+  else
+    cat >> "${HOME}/.zshrc" <<'EOF'
+autoload -Uz compinit
+compinit
 
+PROMPT='%n@%m %1~ %# '
+EOF
+  fi
+
+  cat >> "${HOME}/.zshrc" <<'EOF'
 if command -v mise >/dev/null 2>&1; then
-  eval "\$(mise activate zsh)"
+  eval "$(mise activate zsh)"
 fi
 
 if [[ -f /usr/share/fzf/key-bindings.zsh ]]; then

@@ -48,8 +48,6 @@ install_archlinuxcn() {
     return 0
   fi
 
-  ensure_base
-
   log_info "开始配置 archlinuxcn 源"
   backup_file_root "/etc/pacman.conf"
 

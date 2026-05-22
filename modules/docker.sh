@@ -38,8 +38,6 @@ install_docker_env() {
     return 0
   fi
 
-  ensure_base
-
   log_info "开始安装 Docker 环境"
   pacman_install docker docker-compose
 

@@ -102,7 +102,6 @@ APP_LAUNCHER="wofi"
 FILE_MANAGER="thunar"
 BROWSER_PACKAGE="google-chrome"
 BROWSER_APP="google-chrome-stable"
-BROWSER_DISPLAY_NAME="Google Chrome"
 
 # =========================
 # Proxy：代理核心和面板（可选）

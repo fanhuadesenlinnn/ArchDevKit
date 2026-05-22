@@ -7,8 +7,6 @@ install_git_env() {
     return 0
   fi
 
-  ensure_base
-
   log_info "开始安装 Git / GitHub CLI 环境"
   pacman_install git github-cli openssh
 

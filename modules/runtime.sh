@@ -17,7 +17,6 @@ install_runtime_env() {
     return 0
   fi
 
-  ensure_base
   log_info "开始安装 Runtime 环境：mise + Node.js/npm/Python/Go"
   pacman_install mise
   setup_mise_shell

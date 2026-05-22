@@ -8,8 +8,6 @@ install_nvim_env() {
     return 0
   fi
 
-  ensure_base
-  ensure_git
   ensure_runtime
 
   log_info "开始安装 Neovim 环境"
