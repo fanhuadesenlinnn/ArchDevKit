@@ -8,8 +8,6 @@ install_fonts() {
     return 0
   fi
 
-  ensure_base
-
   log_info "开始安装字体环境"
 
   local packages=()
@@ -43,6 +41,8 @@ install_monaco_font() {
     log_warn "已跳过 Monaco 字体安装"
     return 0
   fi
+
+  ensure_curl_command
 
   local tmp_file
   tmp_file="$(mktemp)"

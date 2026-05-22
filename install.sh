@@ -230,34 +230,84 @@ plan_has_module() {
   return 1
 }
 
-plan_has_any_module() {
-  local modules_text="$1"
-  shift
-  local m
-  for m in "$@"; do
-    plan_has_module "${modules_text}" "${m}" && return 0
+append_plan_module() {
+  local modules_text="$1" module="$2" wanted existing
+  wanted="$(module_key "${module}")"
+  for existing in ${modules_text}; do
+    [[ "$(module_key "${existing}")" == "${wanted}" ]] && {
+      echo "${modules_text}"
+      return 0
+    }
   done
+
+  if [[ -z "${modules_text}" ]]; then
+    echo "${module}"
+  else
+    echo "${modules_text} ${module}"
+  fi
+}
+
+modules_for_shell() {
+  local modules=""
+  if shell_needs_fonts; then
+    modules="$(append_plan_module "${modules}" "fonts")"
+  fi
+  modules="$(append_plan_module "${modules}" "shell")"
+  echo "${modules}"
+}
+
+modules_for_desktop() {
+  local modules=""
+  if desktop_needs_archlinuxcn_for_browser; then
+    modules="$(append_plan_module "${modules}" "archlinuxcn")"
+  fi
+  if desktop_needs_fonts; then
+    modules="$(append_plan_module "${modules}" "fonts")"
+  fi
+  modules="$(append_plan_module "${modules}" "desktop")"
+  echo "${modules}"
+}
+
+plan_uses_github_proxy() {
+  local modules_text="$1"
+
+  plan_has_module "${modules_text}" "nvim" && return 0
+  if plan_has_module "${modules_text}" "shell" && shell_needs_repo_clone; then
+    return 0
+  fi
+  if plan_has_module "${modules_text}" "desktop" && desktop_needs_rime_repo; then
+    return 0
+  fi
+
+  return 1
+}
+
+plan_needs_git_command() {
+  local modules_text="$1"
+
+  plan_has_module "${modules_text}" "nvim" && return 0
+  if plan_has_module "${modules_text}" "shell" && shell_needs_repo_clone; then
+    return 0
+  fi
+  if plan_has_module "${modules_text}" "desktop" && desktop_needs_rime_repo; then
+    return 0
+  fi
+
   return 1
 }
 
 modules_for_command() {
   case "$1" in
     base) echo "base" ;;
-    archlinuxcn) echo "base archlinuxcn" ;;
-    git) echo "base git" ;;
-    runtime) echo "base runtime" ;;
-    nvim) echo "base git runtime nvim" ;;
-    docker) echo "base docker" ;;
-    fonts) echo "base fonts" ;;
-    shell|zsh) echo "base fonts shell" ;;
-    proxy) echo "base proxy" ;;
-    desktop|hyprland)
-      if [[ "${INSTALL_ARCHLINUXCN:-0}" -eq 1 && "${BROWSER_PACKAGE:-}" == "google-chrome" ]]; then
-        echo "base archlinuxcn fonts desktop"
-      else
-        echo "base fonts desktop"
-      fi
-      ;;
+    archlinuxcn) echo "archlinuxcn" ;;
+    git) echo "git" ;;
+    runtime) echo "runtime" ;;
+    nvim) echo "runtime nvim" ;;
+    docker) echo "docker" ;;
+    fonts) echo "fonts" ;;
+    shell|zsh) modules_for_shell ;;
+    proxy) echo "proxy" ;;
+    desktop|hyprland) modules_for_desktop ;;
     dev) echo "base git runtime nvim docker" ;;
     workstation)
       local modules="base"
@@ -283,8 +333,11 @@ show_plan() {
   done
   echo
   echo "关键配置:"
-  echo "  系统软件包:       刷新并执行 pacman -Syu"
-  echo "  基础工具:         base-devel git curl wget unzip tar gzip xz jq ripgrep fd fzf openssh"
+  echo "  软件安装:         按模块执行 pacman -S --needed"
+  if plan_has_module "${modules_text}" "base"; then
+    echo "  系统更新:         base 模块会刷新并执行 pacman -Syu"
+    echo "  基础工具:         base-devel git curl wget unzip tar gzip xz jq ripgrep fd fzf openssh"
+  fi
   if plan_has_module "${modules_text}" "archlinuxcn"; then
     echo "  archlinuxcn 源:   ${ARCHLINUXCN_SERVER}"
     echo "  mirrorlist 包:    $(bool_text "${INSTALL_ARCHLINUXCN_MIRRORLIST}")"
@@ -301,9 +354,14 @@ show_plan() {
     echo "  pip 源:           ${PIP_INDEX_URL}"
     echo "  Corepack:         $(bool_text "${ENABLE_COREPACK}")"
   fi
-  if plan_has_any_module "${modules_text}" "nvim" "shell" "desktop"; then
+  if plan_uses_github_proxy "${modules_text}"; then
     echo "  GitHub 代理:      $(bool_text "${ENABLE_GITHUB_PROXY}")"
     echo "  GitHub 代理地址:  ${GITHUB_PROXY}"
+  fi
+  if plan_needs_git_command "${modules_text}" && \
+    ! plan_has_module "${modules_text}" "git" && \
+    ! plan_has_module "${modules_text}" "base"; then
+    echo "  Git 命令依赖:     如缺失会按需安装 git 包"
   fi
   if plan_has_module "${modules_text}" "nvim"; then
     echo "  Neovim 仓库:      ${NVIM_REPO}"
@@ -329,7 +387,7 @@ show_plan() {
   if plan_has_module "${modules_text}" "desktop"; then
     echo "  Hyprland SDDM:    $(bool_text "${ENABLE_SDDM}")"
     echo "  GPU 类型:         ${GPU_TYPE}"
-    echo "  浏览器:           ${BROWSER_DISPLAY_NAME:-${BROWSER_APP}} (${BROWSER_PACKAGE})"
+    echo "  浏览器包/命令:    ${BROWSER_PACKAGE} / ${BROWSER_APP}"
     echo "  输入法:           Fcitx5 $(bool_text "${ENABLE_FCITX5}") / ${INPUT_METHOD_ENGINE}"
     if [[ "${INPUT_METHOD_ENGINE:-rime}" == "rime" ]]; then
       echo "  Rime 方案:        ${RIME_SCHEMA}"

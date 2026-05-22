@@ -8,8 +8,11 @@ install_desktop_hyprland() {
     return 0
   fi
 
-  ensure_base
-  ensure_fonts
+  if desktop_needs_fonts; then
+    ensure_fonts
+  else
+    log_info "当前 Hyprland 配置不依赖字体模块，跳过字体安装"
+  fi
 
   log_info "开始安装 Hyprland 桌面环境"
   install_hyprland_packages
@@ -26,9 +29,25 @@ install_desktop_hyprland() {
   log_info "Hyprland 桌面环境安装完成"
 }
 
+desktop_needs_fonts() {
+  [[ "${HYPRLAND_CONFIG_MODE:-template}" == "template" || "${ENABLE_FCITX5:-0}" -eq 1 ]]
+}
+
+desktop_needs_rime_repo() {
+  [[ "${ENABLE_FCITX5:-0}" -eq 1 && "${INPUT_METHOD_ENGINE:-rime}" == "rime" && "${INSTALL_RIME_CONFIG:-1}" -eq 1 ]]
+}
+
+desktop_needs_archlinuxcn_for_browser() {
+  local package="${BROWSER_PACKAGE:-google-chrome}"
+  [[ "${package}" == "google-chrome" && "${INSTALL_ARCHLINUXCN:-0}" -eq 1 ]] || return 1
+  pacman_package_installed "${package}" && return 1
+  pacman_package_available "${package}" && return 1
+  return 0
+}
+
 install_hyprland_packages() {
-  pacman_install \
-    networkmanager bluez bluez-utils \
+  local packages=(
+    networkmanager \
     pipewire wireplumber pipewire-pulse pipewire-alsa pipewire-jack \
     mesa vulkan-icd-loader \
     hyprland xdg-desktop-portal xdg-desktop-portal-hyprland xdg-desktop-portal-gtk \
@@ -36,8 +55,18 @@ install_hyprland_packages() {
     waybar wofi kitty thunar thunar-archive-plugin file-roller \
     mako hyprlock hypridle hyprpaper \
     grim slurp wl-clipboard brightnessctl playerctl pavucontrol \
-    network-manager-applet blueman polkit-kde-agent \
-    sddm
+    network-manager-applet polkit-kde-agent
+  )
+
+  if [[ "${ENABLE_BLUETOOTH:-0}" -eq 1 ]]; then
+    packages+=(bluez bluez-utils blueman)
+  fi
+
+  if [[ "${ENABLE_SDDM:-0}" -eq 1 ]]; then
+    packages+=(sddm)
+  fi
+
+  pacman_install "${packages[@]}"
 
   install_input_method_packages
 }
@@ -178,7 +207,7 @@ install_rime_config_repo() {
   local actual_url tmp_dir
 
   [[ -n "${repo}" ]] || die "Rime 配置仓库地址为空"
-  require_cmd git
+  ensure_git_command
 
   actual_url="$(github_proxy_url "${repo}")"
   tmp_dir="$(mktemp -d)"
@@ -320,7 +349,9 @@ verify_hyprland() {
   run_cmd Hyprland --version || true
   run_cmd waybar --version || true
   run_cmd "${BROWSER_APP:-google-chrome-stable}" --version || true
-  run_cmd fcitx5 --version || true
+  if [[ "${ENABLE_FCITX5:-0}" -eq 1 ]]; then
+    run_cmd fcitx5 --version || true
+  fi
 }
 
 ensure_desktop_hyprland() {

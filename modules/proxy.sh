@@ -26,7 +26,7 @@ proxy_config_source_to_file() {
   tmp_file="$(mktemp)"
   case "${source}" in
     http://*|https://*)
-      require_cmd curl
+      ensure_curl_command
       log_info "下载代理配置：${source}"
       curl -fL "${source}" -o "${tmp_file}" || {
         rm -f "${tmp_file}"
@@ -57,7 +57,7 @@ proxy_config_source_to_root_file() {
   tmp_file="$(mktemp)"
   case "${source}" in
     http://*|https://*)
-      require_cmd curl
+      ensure_curl_command
       log_info "下载代理配置：${source}"
       curl -fL "${source}" -o "${tmp_file}" || {
         rm -f "${tmp_file}"
@@ -360,8 +360,6 @@ install_proxy_env() {
     log_info "Proxy 环境已处理，跳过"
     return 0
   fi
-
-  ensure_base
 
   log_info "开始安装 Proxy 环境：${PROXY_CORE}"
   case "${PROXY_CORE:-mihomo}" in

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # 公共函数库：日志、确认、备份、命令执行、GitHub 代理、模块执行标记。
 
-declare -gA MODULE_DONE=()
+MODULE_DONE_LIST=""
 
 log_info()  { printf '\033[32m----> %s\033[0m\n' "$*"; }
 log_warn()  { printf '\033[33m----> %s\033[0m\n' "$*"; }
@@ -37,8 +37,21 @@ sed_escape_replacement() {
   printf '%s' "${value}"
 }
 
-mark_done() { MODULE_DONE["$1"]=1; }
-is_done() { [[ "${MODULE_DONE[$1]:-0}" -eq 1 ]]; }
+mark_done() {
+  local module="$1" module_done
+  for module_done in ${MODULE_DONE_LIST}; do
+    [[ "${module_done}" == "${module}" ]] && return 0
+  done
+  MODULE_DONE_LIST="${MODULE_DONE_LIST} ${module}"
+}
+
+is_done() {
+  local module="$1" module_done
+  for module_done in ${MODULE_DONE_LIST}; do
+    [[ "${module_done}" == "${module}" ]] && return 0
+  done
+  return 1
+}
 
 run_cmd() {
   if [[ "${DRY_RUN:-0}" -eq 1 ]]; then
@@ -75,12 +88,44 @@ pacman_package_installed() {
   pacman -Q "${package}" >/dev/null 2>&1
 }
 
+ensure_command_package() {
+  local command_name="$1" package="$2"
+  [[ -n "${command_name}" ]] || die "命令名为空"
+  [[ -n "${package}" ]] || die "软件包名为空"
+
+  if need_cmd "${command_name}"; then
+    return 0
+  fi
+
+  log_info "安装命令依赖：${command_name}（${package}）"
+  pacman_install "${package}"
+}
+
+ensure_git_command() {
+  ensure_command_package git git
+}
+
+ensure_curl_command() {
+  ensure_command_package curl curl
+}
+
+ensure_aur_build_tools() {
+  if is_done "aur_build_tools"; then
+    return 0
+  fi
+
+  log_info "确保 AUR 构建依赖：base-devel git"
+  pacman_install base-devel git
+  require_cmd git
+  require_cmd makepkg
+  mark_done "aur_build_tools"
+}
+
 install_aur_package() {
   local package="$1" aur_url tmp_dir package_dir
   [[ -n "${package}" ]] || die "AUR 包名为空"
 
-  require_cmd git
-  require_cmd makepkg
+  ensure_aur_build_tools
 
   aur_url="https://aur.archlinux.org/${package}.git"
   tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/archdevkit-aur-${package}.XXXXXX")"
@@ -210,6 +255,7 @@ clone_repo_safe() {
   local repo_url="$1" target_dir="$2" branch="${3:-}" actual_url tmp_dir
   [[ -n "${repo_url}" ]] || die "仓库地址为空"
   [[ -n "${target_dir}" ]] || die "目标目录为空"
+  ensure_git_command
   actual_url="$(github_proxy_url "${repo_url}")"
   tmp_dir="$(mktemp -d)"
   log_info "准备克隆仓库：${repo_url}"
