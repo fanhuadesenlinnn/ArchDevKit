@@ -11,6 +11,24 @@ proxy_service_name() {
   esac
 }
 
+proxy_needs_archlinuxcn() {
+  local package
+  case "${PROXY_CORE:-mihomo}" in
+    mihomo)
+      package="${MIHOMO_PACKAGE:-mihomo}"
+      package_needs_archlinuxcn_repo "${package}" && return 0
+      if [[ "${ENABLE_METACUBEXD:-0}" -eq 1 ]]; then
+        package_needs_archlinuxcn_repo "${METACUBEXD_PACKAGE:-metacubexd-bin}" && return 0
+      fi
+      ;;
+    sing-box)
+      package_needs_archlinuxcn_repo "${SING_BOX_PACKAGE:-sing-box}" && return 0
+      ;;
+  esac
+
+  return 1
+}
+
 proxy_config_source_to_file() {
   local source="$1" target="$2" tmp_file
   [[ -n "${target}" ]] || die "代理配置目标文件为空"

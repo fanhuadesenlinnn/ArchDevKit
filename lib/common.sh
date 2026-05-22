@@ -88,6 +88,25 @@ pacman_package_installed() {
   pacman -Q "${package}" >/dev/null 2>&1
 }
 
+package_needs_archlinuxcn_repo() {
+  local package="$1"
+  [[ -n "${package}" ]] || die "软件包名为空"
+  [[ "${INSTALL_ARCHLINUXCN:-0}" -eq 1 ]] || return 1
+  pacman_package_installed "${package}" && return 1
+  pacman_package_available "${package}" && return 1
+  return 0
+}
+
+ensure_archlinuxcn_for_package() {
+  local package="$1"
+  [[ -n "${package}" ]] || die "软件包名为空"
+  package_needs_archlinuxcn_repo "${package}" || return 1
+
+  log_info "当前 pacman 源未提供 ${package}，优先尝试启用 archlinuxcn 源"
+  ensure_archlinuxcn
+  pacman_package_available "${package}"
+}
+
 ensure_command_package() {
   local command_name="$1" package="$2"
   [[ -n "${command_name}" ]] || die "命令名为空"
@@ -156,6 +175,22 @@ install_package_or_aur() {
   local package="$1"
   [[ -n "${package}" ]] || die "软件包名为空"
 
+  if install_package_from_pacman_prefer_archlinuxcn "${package}"; then
+    return 0
+  fi
+
+  if [[ "${INSTALL_ARCHLINUXCN:-0}" -eq 1 ]]; then
+    log_warn "当前 pacman / archlinuxcn 源仍未提供 ${package}，最后尝试 AUR 构建安装"
+  else
+    log_warn "当前 pacman 源未提供 ${package}，且未启用 archlinuxcn，最后尝试 AUR 构建安装"
+  fi
+  install_aur_package "${package}"
+}
+
+install_package_from_pacman_prefer_archlinuxcn() {
+  local package="$1"
+  [[ -n "${package}" ]] || die "软件包名为空"
+
   if pacman_package_installed "${package}"; then
     log_info "软件包已安装：${package}"
     return 0
@@ -163,10 +198,16 @@ install_package_or_aur() {
 
   if pacman_package_available "${package}"; then
     pacman_install "${package}"
-  else
-    log_warn "当前 pacman 源未提供 ${package}，改用 AUR 构建安装"
-    install_aur_package "${package}"
+    return 0
   fi
+
+  if ensure_archlinuxcn_for_package "${package}"; then
+    log_info "archlinuxcn 源已提供软件包：${package}"
+    pacman_install "${package}"
+    return 0
+  fi
+
+  return 1
 }
 
 backup_path() {

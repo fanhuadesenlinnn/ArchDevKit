@@ -29,8 +29,9 @@ ArchDevKit 是一个面向 Arch Linux 最小化安装后的工作站初始化工
 - `nvim` 会安装 `runtime`，并在克隆配置仓库时按需安装 `git` 包，但不会安装完整的 `git` 模块和 GitHub CLI。
 - `shell` 只有启用 Powerlevel10k 时才会先安装 `fonts`。
 - `desktop` 只有生成默认 Hyprland/Rime 配置需要字体时才会先安装 `fonts`。
-- `desktop` 安装 Google Chrome 时，只有当前源没有 `google-chrome` 且启用了 `INSTALL_ARCHLINUXCN=1`，才会先配置 `archlinuxcn`；仍不可用时才走 AUR 构建。
-- AUR 构建只在实际需要 AUR 包时安装 `base-devel git`。
+- 需要 AUR 兜底的软件包会先查当前 pacman 源；如果找不到且启用了 `INSTALL_ARCHLINUXCN=1`，会先配置并尝试使用 `archlinuxcn`。
+- 只有当前 pacman / archlinuxcn 源都没有对应包时，才会最后尝试 AUR 构建。
+- AUR 构建只在最后兜底路径实际发生时安装 `base-devel git`。
 
 `base`、`dev`、`workstation` 仍然是显式套餐：选择它们时会按套餐目标安装对应模块。
 
@@ -137,7 +138,7 @@ bash install.sh nvim --github-proxy https://gh-proxy.com/
 
 ## 桌面默认值
 
-Hyprland 桌面默认安装 Google Chrome，不安装 Firefox。默认浏览器包为 `google-chrome`，启动命令为 `google-chrome-stable`；如果当前 pacman 源没有该包，脚本会先尝试按配置启用 `archlinuxcn`，仍不可用时再从 AUR 构建。
+Hyprland 桌面默认安装 Google Chrome，不安装 Firefox。默认浏览器包为 `google-chrome`，启动命令为 `google-chrome-stable`；如果当前 pacman 源没有该包，脚本会先尝试按配置启用 `archlinuxcn`，仍不可用时才最后从 AUR 构建。
 
 `--no-sddm` 会同时跳过 SDDM 包安装和服务启用；`ENABLE_BLUETOOTH=0` 会跳过蓝牙相关包和服务启用。
 
