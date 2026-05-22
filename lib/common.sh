@@ -92,6 +92,7 @@ package_needs_archlinuxcn_repo() {
   local package="$1"
   [[ -n "${package}" ]] || die "软件包名为空"
   [[ "${INSTALL_ARCHLINUXCN:-0}" -eq 1 ]] || return 1
+  need_cmd pacman || return 1
   pacman_package_installed "${package}" && return 1
   pacman_package_available "${package}" && return 1
   return 0
