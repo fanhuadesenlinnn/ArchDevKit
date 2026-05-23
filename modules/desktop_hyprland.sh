@@ -176,11 +176,7 @@ desktop_template_packages() {
 
 install_required_pacman_package() {
   local package="$1"
-  if install_package_from_pacman_prefer_archlinuxcn "${package}"; then
-    return 0
-  fi
-
-  die "当前 pacman / archlinuxcn 源未找到必需软件包：${package}"
+  install_package_or_aur "${package}"
 }
 
 install_hyprland_packages() {
@@ -232,17 +228,7 @@ install_browser_package() {
   local package="${BROWSER_PACKAGE:-google-chrome}"
   [[ -n "${package}" ]] || die "浏览器安装包为空"
 
-  if install_package_from_pacman_prefer_archlinuxcn "${package}"; then
-    return 0
-  fi
-
-  if [[ "${package}" == "google-chrome" ]]; then
-    log_warn "当前 pacman / archlinuxcn 源仍未提供 google-chrome，最后尝试 AUR 构建安装"
-    install_aur_package "${package}"
-    return 0
-  fi
-
-  die "当前 pacman / archlinuxcn 源未找到浏览器安装包：${package}"
+  install_package_or_aur "${package}"
 }
 
 install_hyprdots_optional_packages() {
