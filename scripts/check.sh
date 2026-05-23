@@ -29,7 +29,20 @@ check_required_desktop_contracts() {
   return 0
 }
 
+check_rime_defaults() {
+  grep -Eq '^INSTALL_RIME_CONFIG=1$' "${ROOT_DIR}/install_vars" || {
+    echo "Rime 默认应启用个人配置仓库：INSTALL_RIME_CONFIG=1。" >&2
+    return 1
+  }
+
+  grep -Eq '^RIME_CONFIG_REPO="https://github.com/fanhuadesenlinnn/rime-config\.git"$' "${ROOT_DIR}/install_vars" || {
+    echo "Rime 默认配置仓库应指向 fanhuadesenlinnn/rime-config.git。" >&2
+    return 1
+  }
+}
+
 check_bash_syntax
 check_required_desktop_contracts
+check_rime_defaults
 
 echo "ArchDevKit check passed."
