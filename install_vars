@@ -105,7 +105,6 @@ HYPRDOTS_SOURCE_DIR="${SCRIPT_DIR}/files/hyprdots"
 HYPRDOTS_SOURCE_COMMIT="0158219"
 HYPRDOTS_LOCAL_BIN_DIR="${HOME}/.local/bin"
 HYPRDOTS_WALLPAPER_DIR="${HOME}/Pictures/Wallpaper"
-INSTALL_HYPRDOTS_WEB_APPS=0
 INSTALL_HYPRDOTS_OBSIDIAN=0
 HYPRDOTS_CONFIG_MODULES=(
   hypr
@@ -114,10 +113,7 @@ HYPRDOTS_CONFIG_MODULES=(
   dunst
   yazi
   btop
-  cava
   alacritty
-  fastfetch
-  hypridle
   gtk-3.0
   gtk-4.0
 )

@@ -1,9 +1,0 @@
-[Desktop Entry]
-Version=1.0
-Name=Reddit
-Comment=Reddit
-Exec=google-chrome-stable --new-window https://www.reddit.com/
-Terminal=false
-Type=Application
-Icon=$HOME/.local/share/applications/icons/Reddit.png
-StartupNotify=true

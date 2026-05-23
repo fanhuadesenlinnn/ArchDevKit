@@ -17,3 +17,10 @@ Local adjustments:
   Kitty-specific config from upstream is intentionally not vendored.
 - `waybar/scripts/toggle-brightness.sh` stores state under
   `${XDG_STATE_HOME:-$HOME/.local/state}` instead of `/etc/xdg`.
+- The upstream Waybar GitHub contribution widget is removed because ArchDevKit
+  should not require GitHub tokens for a default desktop status bar.
+- Personal web-app launchers, Steam/YouTube helpers, old Waybar variants,
+  unused Rofi menus, Cava, and Fastfetch are trimmed to keep only useful
+  desktop configuration in the default install.
+- The unused Hyprland Lua entrypoint/modules and Hyprvim sample settings are
+  removed; ArchDevKit installs and renders `hyprland.conf` only.

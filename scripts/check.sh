@@ -10,7 +10,7 @@ check_bash_syntax() {
   done < <(
     find "${ROOT_DIR}" \
       -path "${ROOT_DIR}/.git" -prune -o \
-      -type f \( -name "*.sh" -o -name "install_vars" -o -name "switch_waybar" -o -name "weekly_commits" \) \
+      -type f \( -name "*.sh" -o -name "install_vars" \) \
       -print | sort
   )
 }
@@ -25,6 +25,8 @@ check_required_desktop_contracts() {
     echo "检测到安装路径仍引用 ttf-font-awesome，请使用 woff2-font-awesome 兼容 Font Awesome 7。" >&2
     return 1
   }
+
+  return 0
 }
 
 check_bash_syntax
