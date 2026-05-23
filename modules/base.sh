@@ -31,6 +31,10 @@ install_base() {
     openssh \
     ca-certificates
 
+  if ! ensure_aur_helper; then
+    log_warn "未能自动准备 AUR 助手（paru/yay），后续将回退到 makepkg 安装 AUR 软件包"
+  fi
+
   mark_done "base"
   log_info "基础环境安装完成"
 }

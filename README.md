@@ -30,8 +30,9 @@ ArchDevKit 是一个面向 Arch Linux 最小化安装后的工作站初始化工
 - `shell` 只有启用 Powerlevel10k 时才会先安装 `fonts`。
 - `desktop` 默认安装内置 hyprdots 配置；只有该配置、模板或输入法实际需要字体时才会先安装 `fonts`。
 - 需要 AUR 兜底的软件包会先查当前 pacman 源；如果找不到且启用了 `INSTALL_ARCHLINUXCN=1`，会先配置并尝试使用 `archlinuxcn`。
-- 只有当前 pacman / archlinuxcn 源都没有对应包时，才会最后尝试 AUR 构建。
-- AUR 构建只在最后兜底路径实际发生时安装 `base-devel git`。
+- 只有当前 pacman / archlinuxcn 源都没有对应包时，才会最后尝试通过 `paru`/`yay` 安装。
+- 脚本会优先复用系统已有的 `paru`/`yay`；若都不存在，会自动安装一个作为基础 AUR 能力，再继续安装目标软件包。
+- `paru`/`yay` 不可用时，才会回退到 `git clone + makepkg`。
 
 `base`、`dev`、`workstation` 仍然是显式套餐：选择它们时会按套餐目标安装对应模块。
 
@@ -145,7 +146,7 @@ bash install.sh nvim --github-proxy https://gh-proxy.com/
 
 Hyprland 桌面默认使用内置的 hyprdots 配置，来源为 `fanhuadesenlinnn/hyprdots.git` 的提交 `0158219`。脚本只导入桌面相关配置目录，包括 `hypr`、`waybar`、`rofi`、`dunst`、`kitty`、`yazi`、`btop`、`cava`、`fastfetch`、`hypridle`、`gtk-3.0`、`gtk-4.0`，不会直接执行 hyprdots 原仓库安装脚本。
 
-Hyprland 桌面默认安装 Google Chrome，不安装 Firefox。默认浏览器包为 `google-chrome`，启动命令为 `google-chrome-stable`；如果当前 pacman 源没有该包，脚本会先尝试按配置启用 `archlinuxcn`，仍不可用时才最后从 AUR 构建。
+Hyprland 桌面默认安装 Google Chrome，不安装 Firefox。默认浏览器包为 `google-chrome`，启动命令为 `google-chrome-stable`；如果当前 pacman 源没有该包，脚本会先尝试按配置启用 `archlinuxcn`，仍不可用时会通过 `paru`/`yay` 安装。
 
 `--no-sddm` 会同时跳过 SDDM 包安装和服务启用；`ENABLE_BLUETOOTH=0` 会跳过蓝牙相关包和服务启用。
 
@@ -157,7 +158,7 @@ https://github.com/fanhuadesenlinnn/rime-config.git
 
 该仓库只保留可共享配置，不包含 `build/`、`*.userdb/`、`sync/`、`installation*.yaml`、`user*.yaml` 等机器状态、同步数据和个人输入习惯文件。
 
-hyprdots 的 Web App 启动器和 Obsidian 是可选内容，默认不安装，避免为了非必需应用触发 AUR 构建。需要完整启用时可以显式打开：
+hyprdots 的 Web App 启动器和 Obsidian 是可选内容，默认不安装，避免为了非必需应用触发额外 AUR 安装。需要完整启用时可以显式打开：
 
 ```bash
 bash install.sh desktop --with-hyprdots-web-apps --with-obsidian

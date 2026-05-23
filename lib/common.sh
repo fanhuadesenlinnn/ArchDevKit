@@ -141,7 +141,19 @@ ensure_aur_build_tools() {
   mark_done "aur_build_tools"
 }
 
-install_aur_package() {
+aur_helper_command() {
+  if need_cmd paru; then
+    printf '%s' "paru"
+    return 0
+  fi
+  if need_cmd yay; then
+    printf '%s' "yay"
+    return 0
+  fi
+  return 1
+}
+
+install_aur_package_via_makepkg() {
   local package="$1" aur_url tmp_dir package_dir
   [[ -n "${package}" ]] || die "AUR 包名为空"
 
@@ -172,6 +184,57 @@ install_aur_package() {
   rm -rf "${tmp_dir}"
 }
 
+ensure_aur_helper() {
+  local helper
+
+  if helper="$(aur_helper_command)"; then
+    return 0
+  fi
+
+  log_info "未检测到 AUR 助手（paru/yay），开始准备基础 AUR 助手"
+
+  if install_package_from_pacman_prefer_archlinuxcn paru; then
+    helper="paru"
+  elif install_package_from_pacman_prefer_archlinuxcn yay; then
+    helper="yay"
+  else
+    log_warn "当前 pacman / archlinuxcn 源未提供 paru/yay，尝试从 AUR 引导安装"
+    if install_aur_package_via_makepkg paru; then
+      helper="paru"
+    elif install_aur_package_via_makepkg yay; then
+      helper="yay"
+    else
+      return 1
+    fi
+  fi
+
+  if helper="$(aur_helper_command)"; then
+    log_info "AUR 助手已就绪：${helper}"
+    return 0
+  fi
+
+  return 1
+}
+
+install_aur_package() {
+  local package="$1" helper
+  [[ -n "${package}" ]] || die "AUR 包名为空"
+
+  if ensure_aur_helper; then
+    helper="$(aur_helper_command)"
+    log_info "通过 ${helper} 安装软件包：${package}"
+    if [[ "${DRY_RUN:-0}" -eq 1 ]]; then
+      echo "+ ${helper} -S --needed --noconfirm ${package}"
+      return 0
+    fi
+
+    "${helper}" -S --needed --noconfirm "${package}" && return 0
+    log_warn "${helper} 安装失败，回退到 makepkg：${package}"
+  fi
+
+  install_aur_package_via_makepkg "${package}"
+}
+
 install_package_or_aur() {
   local package="$1"
   [[ -n "${package}" ]] || die "软件包名为空"
@@ -181,9 +244,9 @@ install_package_or_aur() {
   fi
 
   if [[ "${INSTALL_ARCHLINUXCN:-0}" -eq 1 ]]; then
-    log_warn "当前 pacman / archlinuxcn 源仍未提供 ${package}，最后尝试 AUR 构建安装"
+    log_warn "当前 pacman / archlinuxcn 源仍未提供 ${package}，最后尝试通过 yay/paru 安装"
   else
-    log_warn "当前 pacman 源未提供 ${package}，且未启用 archlinuxcn，最后尝试 AUR 构建安装"
+    log_warn "当前 pacman 源未提供 ${package}，且未启用 archlinuxcn，最后尝试通过 yay/paru 安装"
   fi
   install_aur_package "${package}"
 }
