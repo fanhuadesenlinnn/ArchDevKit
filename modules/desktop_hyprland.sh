@@ -119,27 +119,18 @@ desktop_hyprdots_packages() {
   font_awesome_package="$(desktop_font_awesome_package)"
 
   local packages=(
-    acpi
-    bat
     brightnessctl
     btop
-    cava
     cliphist
     desktop-file-utils
     dunst
-    eza
-    fastfetch
-    fd
     foot
-    fzf
     grim
-    hypridle
     hyprland
     hyprlock
     hyprpaper
     hyprpicker
     hyprpolkitagent
-    jq
     alacritty
     libnotify
     mesa
@@ -159,9 +150,7 @@ desktop_hyprdots_packages() {
     slurp
     "${font_awesome_package}"
     ttf-iosevka-nerd
-    unzip
     waybar
-    wget
     wireplumber
     wl-clipboard
     wtype
@@ -814,7 +803,6 @@ install_hyprdots_config() {
   ensure_hyprpaper_config
   apply_hyprdots_runtime_overrides
   ensure_waybar_runtime_files
-  install_hyprdots_web_apps "${source_root}"
 }
 
 install_hyprdots_config_module() {
@@ -874,7 +862,7 @@ backup_legacy_terminal_configs() {
 make_hyprdots_scripts_executable() {
   local target="$1"
   [[ -d "${target}" ]] || return 0
-  find "${target}" -type f \( -name "*.sh" -o -name "switch_waybar" -o -name "weekly_commits" \) -exec chmod +x {} +
+  find "${target}" -type f -name "*.sh" -exec chmod +x {} +
 }
 
 install_hyprdots_local_bin() {
@@ -932,12 +920,10 @@ hyprdots_menu_command() {
 
 apply_hyprdots_runtime_overrides() {
   local hypr_conf="${HOME}/.config/hypr/hyprland.conf"
-  local variables_lua="${HOME}/.config/hypr/modules/variables.lua"
   local terminal file_manager menu browser note_app
 
   [[ "${DRY_RUN:-0}" -eq 1 ]] && {
     echo "+ render ArchDevKit overrides into ${hypr_conf}"
-    echo "+ render ArchDevKit overrides into ${variables_lua}"
     return 0
   }
 
@@ -980,31 +966,15 @@ apply_hyprdots_runtime_overrides() {
     install -m 0644 "${tmp_file}" "${hypr_conf}"
     rm -f "${tmp_file}"
   fi
-
-  if [[ -f "${variables_lua}" ]]; then
-    local tmp_lua
-    tmp_lua="$(mktemp)"
-    sed \
-      -e "s/terminal = \".*\"/terminal = \"${terminal}\"/" \
-      -e "s/fileManager = \".*\"/fileManager = \"${file_manager}\"/" \
-      -e "s/menu = \".*\"/menu = \"${menu}\"/" \
-      -e "s/browser = \".*\"/browser = \"${browser}\"/" \
-      -e "s/note = \".*\"/note = \"${note_app}\"/" \
-      "${variables_lua}" > "${tmp_lua}"
-    install -m 0644 "${tmp_lua}" "${variables_lua}"
-    rm -f "${tmp_lua}"
-  fi
 }
 
 ensure_waybar_runtime_files() {
   local waybar_dir="${HOME}/.config/waybar"
-  local env_file="${waybar_dir}/scripts/.env"
 
   if [[ "${DRY_RUN:-0}" -eq 1 ]]; then
     echo "+ link ${waybar_dir}/config -> config_new.jsonc"
     echo "+ link ${waybar_dir}/config.jsonc -> config_new.jsonc"
     echo "+ link ${waybar_dir}/style.css -> style_new.css"
-    echo "+ create ${env_file} if missing"
     return 0
   fi
 
@@ -1016,61 +986,6 @@ ensure_waybar_runtime_files() {
       [[ -f style_new.css ]] && ln -sfn style_new.css style.css
     )
   fi
-
-  if [[ ! -f "${env_file}" ]]; then
-    mkdir -p "$(dirname "${env_file}")"
-    cat > "${env_file}" <<'EOF'
-GITHUB_USERNAME=
-GITHUB_PAT=
-EOF
-  fi
-}
-
-install_hyprdots_web_apps() {
-  local source_root="$1"
-  local source="${source_root}/web-apps"
-  local apps_dir="${HOME}/.local/share/applications"
-  local icons_dir="${apps_dir}/icons"
-  local desktop_file target_file browser_app
-
-  [[ "${INSTALL_HYPRDOTS_WEB_APPS:-0}" -eq 1 ]] || {
-    log_info "当前配置未启用 hyprdots Web App 启动器，跳过"
-    return 0
-  }
-
-  [[ -d "${source}" ]] || {
-    log_warn "hyprdots web-apps 目录不存在，跳过：${source}"
-    return 0
-  }
-
-  browser_app="$(sed_escape_replacement "${BROWSER_APP:-google-chrome-stable}")"
-  log_info "安装 hyprdots Web App 启动器：${apps_dir}"
-
-  if [[ "${DRY_RUN:-0}" -eq 1 ]]; then
-    echo "+ mkdir -p ${apps_dir} ${icons_dir}"
-    echo "+ install web-app desktop files from ${source}"
-    return 0
-  fi
-
-  mkdir -p "${apps_dir}" "${icons_dir}"
-
-  if [[ -d "${source}/icons" ]]; then
-    cp -a "${source}/icons/." "${icons_dir}/"
-  fi
-
-  while IFS= read -r desktop_file; do
-    if [[ "$(basename "${desktop_file}")" == "steam.desktop" ]] && ! command -v steam >/dev/null 2>&1; then
-      log_warn "未安装 steam，跳过 steam.desktop"
-      continue
-    fi
-
-    target_file="${apps_dir}/$(basename "${desktop_file}")"
-    sed \
-      -e "s|\\$HOME|${HOME}|g" \
-      -e "s|google-chrome-stable|${browser_app}|g" \
-      "${desktop_file}" > "${target_file}"
-    chmod 0644 "${target_file}"
-  done < <(find "${source}" -maxdepth 1 -type f -name "*.desktop" | sort)
 }
 
 systemd_system_unit_exists() {

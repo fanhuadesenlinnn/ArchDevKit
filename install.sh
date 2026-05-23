@@ -50,8 +50,6 @@ ArchDevKit - Arch Linux 工作站初始化工具
   --browser-package NAME    指定桌面浏览器安装包
   --browser-app COMMAND     指定桌面浏览器启动命令
   --hyprland-config-mode MODE 指定 Hyprland 配置模式：hyprdots / template / skip
-  --with-hyprdots-web-apps 安装 hyprdots Web App 启动器
-  --no-hyprdots-web-apps   不安装 hyprdots Web App 启动器
   --with-obsidian          安装 hyprdots 可选应用 Obsidian
   --no-obsidian            不安装 hyprdots 可选应用 Obsidian
   --rime-schema NAME        指定 Rime 默认方案
@@ -104,8 +102,6 @@ parse_args() {
       --browser-app=*) BROWSER_APP="${1#*=}"; shift ;;
       --hyprland-config-mode) HYPRLAND_CONFIG_MODE="${2:-hyprdots}"; shift 2 ;;
       --hyprland-config-mode=*) HYPRLAND_CONFIG_MODE="${1#*=}"; shift ;;
-      --with-hyprdots-web-apps) INSTALL_HYPRDOTS_WEB_APPS=1; shift ;;
-      --no-hyprdots-web-apps) INSTALL_HYPRDOTS_WEB_APPS=0; shift ;;
       --with-obsidian) INSTALL_HYPRDOTS_OBSIDIAN=1; shift ;;
       --no-obsidian) INSTALL_HYPRDOTS_OBSIDIAN=0; shift ;;
       --rime-schema) RIME_SCHEMA="${2:-}"; INPUT_METHOD_ENGINE="rime"; shift 2 ;;
@@ -181,7 +177,6 @@ show_config() {
     echo "hyprdots 配置目录:    ${HYPRDOTS_SOURCE_DIR}"
     echo "hyprdots 本地脚本:    ${HYPRDOTS_LOCAL_BIN_DIR}"
     echo "hyprdots 壁纸目录:    ${HYPRDOTS_WALLPAPER_DIR}"
-    echo "hyprdots Web App:     $(bool_text "${INSTALL_HYPRDOTS_WEB_APPS}")"
     echo "hyprdots Obsidian:    $(bool_text "${INSTALL_HYPRDOTS_OBSIDIAN}")"
   fi
   echo "浏览器安装包:         ${BROWSER_PACKAGE}"
@@ -424,7 +419,6 @@ show_plan() {
     echo "  Hyprland 配置:    ${HYPRLAND_CONFIG_MODE}"
     if hyprdots_mode_enabled; then
       echo "  hyprdots 提交:    ${HYPRDOTS_SOURCE_COMMIT:-unknown}"
-      echo "  hyprdots Web App: $(bool_text "${INSTALL_HYPRDOTS_WEB_APPS}")"
       echo "  Obsidian:         $(bool_text "${INSTALL_HYPRDOTS_OBSIDIAN}")"
     fi
     echo "  浏览器包/命令:    ${BROWSER_PACKAGE} / ${BROWSER_APP}"

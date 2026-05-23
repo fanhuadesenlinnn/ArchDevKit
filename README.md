@@ -127,8 +127,6 @@ bash install.sh nvim --github-proxy https://gh-proxy.com/
 --browser-package NAME    指定桌面浏览器安装包
 --browser-app COMMAND     指定桌面浏览器启动命令
 --hyprland-config-mode MODE 指定 Hyprland 配置模式：hyprdots / template / skip
---with-hyprdots-web-apps 安装 hyprdots Web App 启动器
---no-hyprdots-web-apps   不安装 hyprdots Web App 启动器
 --with-obsidian          安装 hyprdots 可选应用 Obsidian
 --no-obsidian            不安装 hyprdots 可选应用 Obsidian
 --rime-schema NAME        指定 Rime 默认方案
@@ -145,7 +143,7 @@ bash install.sh nvim --github-proxy https://gh-proxy.com/
 
 ## 桌面默认值
 
-Hyprland 桌面默认使用内置的 hyprdots 配置，来源为 `fanhuadesenlinnn/hyprdots.git` 的提交 `0158219`。脚本只导入桌面相关配置目录，包括 `hypr`、`waybar`、`rofi`、`dunst`、`alacritty`、`yazi`、`btop`、`cava`、`fastfetch`、`hypridle`、`gtk-3.0`、`gtk-4.0`，不会直接执行 hyprdots 原仓库安装脚本。
+Hyprland 桌面默认使用内置的 hyprdots 配置，来源为 `fanhuadesenlinnn/hyprdots.git` 的提交 `0158219`。脚本只导入桌面核心配置目录，包括 `hypr`、`waybar`、`rofi`、`dunst`、`alacritty`、`yazi`、`btop`、`gtk-3.0`、`gtk-4.0`，不会直接执行 hyprdots 原仓库安装脚本。
 
 Hyprland 桌面默认安装 Google Chrome，不安装 Firefox。默认浏览器包为 `google-chrome`，启动命令为 `google-chrome-stable`；如果当前 pacman 源没有该包，脚本会先尝试按配置启用 `archlinuxcn`，仍不可用时会通过 `paru`/`yay` 安装。
 
@@ -159,10 +157,10 @@ GPU 默认使用 `GPU_TYPE=auto` 根据 `lspci` 和 `systemd-detect-virt` 自动
 
 中文输入法默认使用 Fcitx5 + Rime，默认方案为 `luna_pinyin_simp`。默认不拉取个人 Rime 配置仓库，直接使用 `fcitx5-rime` 和 `rime-luna-pinyin` 提供的默认配置；后续需要个人配置时再通过 `--rime-repo` 或 `INSTALL_RIME_CONFIG=1` 安装到 `~/.local/share/fcitx5/rime`。
 
-hyprdots 的 Web App 启动器和 Obsidian 是可选内容，默认不安装，避免为了非必需应用触发额外 AUR 安装。需要完整启用时可以显式打开：
+Obsidian 是可选内容，默认不安装，避免为了非必需应用触发额外 AUR 安装。需要启用时可以显式打开：
 
 ```bash
-bash install.sh desktop --with-hyprdots-web-apps --with-obsidian
+bash install.sh desktop --with-obsidian
 ```
 
 可通过 `install_vars` 或参数覆盖：

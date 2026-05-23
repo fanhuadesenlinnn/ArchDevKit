@@ -108,14 +108,6 @@
     "tooltip": false,
     "on-click-right": "~/.local/bin/archdevkit-terminal -e ~/.config/waybar/scripts/select-wallpaper.sh"
   },
-  "custom/gh": {
-    "exec": "sleep 1 && ~/.config/waybar/scripts/weekly_commits dark",
-    "return-type": "json",
-    "interval": 2400,
-    "tooltip": true,
-    "on-click": "xdg-open https://github.com/ad1822",
-    "on-click-right": "~/.config/waybar/scripts/weekly_commits DARK"
-  },
   "hyprland/workspaces": {
     "on-click": "activate",
     "format": "{icon}",
