@@ -111,17 +111,6 @@ effective_gpu_type() {
 }
 
 desktop_font_awesome_package() {
-  if pacman_package_installed woff2-font-awesome || pacman_package_available woff2-font-awesome; then
-    printf '%s\n' "woff2-font-awesome"
-    return 0
-  fi
-
-  if pacman_package_installed ttf-font-awesome || pacman_package_available ttf-font-awesome; then
-    log_warn "检测到旧版 Font Awesome 包名可用，将临时使用 ttf-font-awesome；建议后续迁移到 woff2-font-awesome"
-    printf '%s\n' "ttf-font-awesome"
-    return 0
-  fi
-
   printf '%s\n' "woff2-font-awesome"
 }
 
@@ -243,11 +232,6 @@ desktop_template_packages() {
   printf '%s\n' "${packages[@]}"
 }
 
-install_required_pacman_package() {
-  local package="$1"
-  install_package_or_aur "${package}"
-}
-
 install_hyprland_packages() {
   local package packages=()
 
@@ -268,9 +252,7 @@ install_hyprland_packages() {
   esac
 
   log_info "安装 Hyprland 桌面软件包"
-  for package in "${packages[@]}"; do
-    install_required_pacman_package "${package}"
-  done
+  install_packages_or_aur "${packages[@]}"
 
   install_input_method_packages
 }
@@ -283,9 +265,7 @@ install_input_method_packages() {
 
   case "${INPUT_METHOD_ENGINE:-rime}" in
     rime)
-      for package in fcitx5 fcitx5-configtool fcitx5-gtk fcitx5-qt fcitx5-rime rime-luna-pinyin; do
-        install_required_pacman_package "${package}"
-      done
+      install_packages_or_aur fcitx5 fcitx5-configtool fcitx5-gtk fcitx5-qt fcitx5-rime rime-luna-pinyin
       ;;
     *)
       die "暂不支持的输入法引擎：${INPUT_METHOD_ENGINE}"
@@ -1112,7 +1092,7 @@ enable_sddm_if_needed() {
 
   if ! systemd_system_unit_exists sddm.service; then
     log_warn "未检测到 sddm.service，尝试安装 SDDM 软件包"
-    install_required_pacman_package sddm
+    install_package_or_aur sddm
     run_sudo systemctl daemon-reload || log_warn "systemd 重新加载失败，可稍后手动执行：sudo systemctl daemon-reload"
   fi
 

@@ -78,6 +78,20 @@ pacman_install() {
   run_sudo pacman -S --needed --noconfirm "$@"
 }
 
+dedupe_list() {
+  local item seen=" "
+  for item in "$@"; do
+    [[ -n "${item}" ]] || continue
+    case "${seen}" in
+      *" ${item} "*) ;;
+      *)
+        printf '%s\n' "${item}"
+        seen="${seen}${item} "
+        ;;
+    esac
+  done
+}
+
 pacman_package_available() {
   local package="$1"
   pacman -Si "${package}" >/dev/null 2>&1
@@ -236,19 +250,67 @@ install_aur_package() {
 }
 
 install_package_or_aur() {
-  local package="$1"
-  [[ -n "${package}" ]] || die "软件包名为空"
+  [[ "$#" -gt 0 ]] || return 0
+  install_packages_or_aur "$@"
+}
 
-  if install_package_from_pacman_prefer_archlinuxcn "${package}"; then
-    return 0
+install_packages_or_aur() {
+  local package
+  local pacman_packages=()
+  local missing_packages=()
+  local aur_packages=()
+
+  require_arch
+  for package in "$@"; do
+    [[ -n "${package}" ]] || die "软件包名为空"
+  done
+
+  while IFS= read -r package; do
+    if pacman_package_installed "${package}"; then
+      log_info "软件包已安装：${package}"
+    elif pacman_package_available "${package}"; then
+      pacman_packages+=("${package}")
+    else
+      missing_packages+=("${package}")
+    fi
+  done < <(dedupe_list "$@")
+
+  if [[ "${#missing_packages[@]}" -gt 0 && "${INSTALL_ARCHLINUXCN:-0}" -eq 1 ]]; then
+    log_info "当前 pacman 源缺少软件包：${missing_packages[*]}，尝试启用 archlinuxcn 后重试"
+    ensure_archlinuxcn
+
+    local retry_missing=()
+    for package in "${missing_packages[@]}"; do
+      if pacman_package_installed "${package}"; then
+        log_info "软件包已安装：${package}"
+      elif pacman_package_available "${package}"; then
+        pacman_packages+=("${package}")
+      else
+        retry_missing+=("${package}")
+      fi
+    done
+    missing_packages=("${retry_missing[@]}")
   fi
 
-  if [[ "${INSTALL_ARCHLINUXCN:-0}" -eq 1 ]]; then
-    log_warn "当前 pacman / archlinuxcn 源仍未提供 ${package}，最后尝试通过 yay/paru 安装"
-  else
-    log_warn "当前 pacman 源未提供 ${package}，且未启用 archlinuxcn，最后尝试通过 yay/paru 安装"
+  if [[ "${#pacman_packages[@]}" -gt 0 ]]; then
+    pacman_install "${pacman_packages[@]}"
   fi
-  install_aur_package "${package}"
+
+  if [[ "${#missing_packages[@]}" -gt 0 ]]; then
+    if [[ "${INSTALL_ARCHLINUXCN:-0}" -eq 1 ]]; then
+      log_warn "当前 pacman / archlinuxcn 源仍未提供软件包：${missing_packages[*]}，最后尝试通过 yay/paru 安装"
+    else
+      log_warn "当前 pacman 源未提供软件包：${missing_packages[*]}，且未启用 archlinuxcn，最后尝试通过 yay/paru 安装"
+    fi
+
+    for package in "${missing_packages[@]}"; do
+      install_aur_package "${package}"
+      aur_packages+=("${package}")
+    done
+
+    [[ "${#aur_packages[@]}" -eq "${#missing_packages[@]}" ]] || \
+      die "部分 AUR 软件包安装失败：${missing_packages[*]}"
+  fi
 }
 
 install_package_from_pacman_prefer_archlinuxcn() {
