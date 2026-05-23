@@ -1,7 +1,7 @@
 include current-theme.conf
 
 font_size 14.0
-enable_ligature true
+disable_ligatures never
 
 confirm_os_window_close 0
 map ctrl+shift+c copy_to_clipboard
@@ -13,7 +13,7 @@ window_padding_width 10
 window_margin_width 5
 active_border_color #e0e4e5
 inactive_border_color #9EA3A7
-enabled_layouts Tall, *
+enabled_layouts tall, *
 
 enable_image_protocol yes
 
