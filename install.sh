@@ -366,7 +366,7 @@ show_plan() {
   done
   echo
   echo "关键配置:"
-  echo "  软件安装:         按模块执行 pacman -S --needed"
+  echo "  软件安装:         按模块批量执行 pacman -S --needed，缺包再兜底 archlinuxcn/AUR"
   if plan_has_module "${modules_text}" "base"; then
     echo "  系统更新:         base 模块会刷新并执行 pacman -Syu"
     echo "  基础工具:         base-devel git curl wget unzip tar gzip xz jq ripgrep fd fzf openssh"

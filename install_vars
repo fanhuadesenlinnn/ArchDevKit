@@ -23,7 +23,8 @@ PIP_TRUSTED_HOST="pypi.tuna.tsinghua.edu.cn"
 # archlinuxcn
 # =========================
 INSTALL_ARCHLINUXCN=1
-ARCHLINUXCN_SERVER='https://repo.archlinuxcn.org/$arch'
+# 中国大陆默认使用 USTC archlinuxcn 镜像，减少首次安装时的解析和跨境网络波动。
+ARCHLINUXCN_SERVER='https://mirrors.ustc.edu.cn/archlinuxcn/$arch'
 INSTALL_ARCHLINUXCN_MIRRORLIST=1
 
 # =========================
