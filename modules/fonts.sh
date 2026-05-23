@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # 字体模块
-# 安装中文字体、Emoji、Nerd Font，并可选安装 Monaco 字体。
+# 安装中文字体、Emoji、Nerd Font，并可选通过 archlinuxcn 安装 Monaco 字体。
 
 install_fonts() {
   if is_done "fonts"; then
@@ -20,12 +20,12 @@ install_fonts() {
     packages+=(ttf-jetbrains-mono-nerd)
   fi
 
-  if [[ "${#packages[@]}" -gt 0 ]]; then
-    pacman_install "${packages[@]}"
+  if [[ "${INSTALL_MONACO_FONT:-0}" -eq 1 ]]; then
+    packages+=("${MONACO_FONT_PACKAGE:-ttf-monaco}")
   fi
 
-  if [[ "${INSTALL_MONACO_FONT:-0}" -eq 1 ]]; then
-    install_monaco_font
+  if [[ "${#packages[@]}" -gt 0 ]]; then
+    install_packages_or_aur "${packages[@]}"
   fi
 
   if [[ "${MONACO_AS_SYSTEM_FONT:-0}" -eq 1 ]]; then
@@ -37,71 +37,6 @@ install_fonts() {
 
   mark_done "fonts"
   log_info "字体环境安装完成"
-}
-
-monaco_font_installed() {
-  fc-match Monaco >/dev/null 2>&1 || return 1
-  fc-match Monaco 2>/dev/null | grep -qi 'monaco'
-}
-
-install_monaco_font() {
-  local local_path="${MONACO_FONT_LOCAL_PATH:-${SCRIPT_DIR}/files/fonts/Monaco_Linux.ttf}"
-  local required="${MONACO_FONT_REQUIRED:-0}"
-  local tmp_file=""
-
-  if monaco_font_installed; then
-    log_info "检测到系统已安装 Monaco 字体，跳过安装"
-    return 0
-  fi
-
-  if [[ -n "${local_path}" && -f "${local_path}" ]]; then
-    log_info "使用本地 Monaco 字体：${local_path}"
-    if [[ "${DRY_RUN:-0}" -eq 1 ]]; then
-      echo "+ install ${local_path} -> ${MONACO_FONT_DIR}/Monaco_Linux.ttf"
-      return 0
-    fi
-
-    run_sudo mkdir -p "${MONACO_FONT_DIR}"
-    run_sudo install -m 0644 "${local_path}" "${MONACO_FONT_DIR}/Monaco_Linux.ttf"
-    return 0
-  fi
-
-  if [[ -z "${MONACO_FONT_URL:-}" ]]; then
-    log_warn "未找到本地 Monaco 字体：${local_path}"
-    log_warn "已跳过 Monaco 字体安装；如需安装，请把字体放到该路径，或设置 MONACO_FONT_URL 为可信来源"
-    [[ "${required}" -eq 1 ]] && die "MONACO_FONT_REQUIRED=1，但 Monaco 字体不可用"
-    return 0
-  fi
-
-  log_warn "Monaco 字体将从外部 URL 下载，请确认来源可信：${MONACO_FONT_URL}"
-  if ! confirm_yes "是否继续下载 Monaco 字体？"; then
-    log_warn "已跳过 Monaco 字体安装"
-    [[ "${required}" -eq 1 ]] && die "MONACO_FONT_REQUIRED=1，但用户取消安装 Monaco 字体"
-    return 0
-  fi
-
-  ensure_curl_command
-
-  tmp_file="$(mktemp)"
-
-  log_info "下载 Monaco 字体：${MONACO_FONT_URL}"
-  if [[ "${DRY_RUN:-0}" -eq 1 ]]; then
-    echo "+ curl -fL ${MONACO_FONT_URL} -o ${tmp_file}"
-    echo "+ install ${tmp_file} -> ${MONACO_FONT_DIR}/Monaco_Linux.ttf"
-    rm -f "${tmp_file}"
-    return 0
-  fi
-
-  if ! curl -fL "${MONACO_FONT_URL}" -o "${tmp_file}"; then
-    rm -f "${tmp_file}"
-    log_warn "Monaco 字体下载失败，已跳过；当前安装继续执行"
-    [[ "${required}" -eq 1 ]] && die "MONACO_FONT_REQUIRED=1，但 Monaco 字体下载失败"
-    return 0
-  fi
-
-  run_sudo mkdir -p "${MONACO_FONT_DIR}"
-  run_sudo install -m 0644 "${tmp_file}" "${MONACO_FONT_DIR}/Monaco_Linux.ttf"
-  rm -f "${tmp_file}"
 }
 
 configure_monaco_system_font() {
