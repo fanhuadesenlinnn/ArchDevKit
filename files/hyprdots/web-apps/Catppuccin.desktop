@@ -1,0 +1,9 @@
+[Desktop Entry]
+Version=1.0
+Name=Catppuccin
+Comment=Catppuccin
+Exec=google-chrome-stable --new-window https://catppuccin.com/palette/
+Terminal=false
+Type=Application
+Icon=$HOME/.local/share/applications/icons/Catppuccin.png
+StartupNotify=true
