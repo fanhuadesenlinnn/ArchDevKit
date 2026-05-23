@@ -63,7 +63,25 @@ desktop_needs_archlinuxcn() {
   return 1
 }
 
+desktop_font_awesome_package() {
+  if pacman_package_installed woff2-font-awesome || pacman_package_available woff2-font-awesome; then
+    printf '%s\n' "woff2-font-awesome"
+    return 0
+  fi
+
+  if pacman_package_installed ttf-font-awesome || pacman_package_available ttf-font-awesome; then
+    log_warn "检测到旧版 Font Awesome 包名可用，将临时使用 ttf-font-awesome；建议后续迁移到 woff2-font-awesome"
+    printf '%s\n' "ttf-font-awesome"
+    return 0
+  fi
+
+  printf '%s\n' "woff2-font-awesome"
+}
+
 desktop_hyprdots_packages() {
+  local font_awesome_package
+  font_awesome_package="$(desktop_font_awesome_package)"
+
   local packages=(
     acpi
     bat
@@ -100,7 +118,7 @@ desktop_hyprdots_packages() {
     rofi
     rtkit
     slurp
-    ttf-font-awesome
+    "${font_awesome_package}"
     ttf-iosevka-nerd
     unzip
     waybar
