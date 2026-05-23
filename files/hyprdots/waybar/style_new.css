@@ -1,4 +1,4 @@
-/* Waybar 新版样式：深色但不压眼，保证状态文字清晰可读。 */
+/* Waybar 新版样式：i3 Clear 风格，黑底、清晰文字、蓝色焦点、状态色只表达状态。 */
 @import 'mocha.css';
 
 * {
@@ -18,35 +18,30 @@
 .modules-right {}
 
 #workspaces {
-  /* 工作区区域：当前工作区通过下划线高亮。 */
+  /* 工作区区域：当前工作区通过低饱和蓝下划线高亮。 */
   border-radius: 0px;
-  /* background: @blue; */
   margin-right: 10px;
+  background: @base;
 }
 
 #workspaces button {
-  /* background: @blue; */
   all: initial;
   padding: 0 9px;
   margin: 0 2px;
 }
 
 #workspaces button label {
-  /* background: @blue; */
-  color: @text;
-  /* font-size: 10; */
+  color: @overlay2;
 }
 
 #workspaces button.active label {
   color: @text;
-  border-bottom: 2px solid @blue;
+  border-bottom: 3px solid @blue;
   padding: 0 5px;
-  /* adds horizontal space → longer border */
 }
 
-#workspaces button.empty {
-  /* background: @blue; */
-  /* opacity: 0.2; */
+#workspaces button.empty label {
+  color: @overlay0;
 }
 
 #tray {
@@ -70,8 +65,7 @@
 
 
 #clock {
-  /* color: @crust; */
-  /* background: @maroon; */
+  color: @text;
   padding: 0 10px;
 }
 
@@ -88,8 +82,8 @@
 
 tooltip {
   color: @text;
-  background: @base;
-  border: 1px solid @surface1;
+  background: @surface0;
+  border: 1px solid @surface2;
   font-family: "Noto Sans CJK SC", "JetBrainsMono Nerd Font", sans-serif;
   font-size: 13px;
   padding: 6px;
@@ -101,11 +95,11 @@ tooltip {
 }
 
 #custom-seperator {
-  color: @overlay0;
+  color: @overlay1;
 }
 
 #cpu {
-  color: @text;
+  color: @green;
   margin-right: 10px;
 }
 
@@ -131,13 +125,13 @@ tooltip {
 }
 
 #memory {
-  color: @text;
+  color: @peach;
   margin-right: 10px;
 }
 
 
 #temperature.gpu {
-  color: @text;
+  color: @yellow;
   margin-left: 6px;
 }
 
@@ -151,7 +145,7 @@ tooltip {
 }
 
 #network {
-  color: @lavender;
+  color: @sky;
   margin-right: 10px;
 }
 
@@ -165,30 +159,28 @@ tooltip {
 }
 
 #battery.charging {
-  color: @mantle;
-  background: #a6d189;
+  color: @base;
+  background: @green;
 }
 
 #battery.good:not(.charging) {
-  background: #91d7e3;
-  color: @mantle;
+  background: @sky;
+  color: @base;
 }
 
 #battery.warning:not(.charging) {
-  background: #91d7e3;
-  color: @mantle;
+  background: @peach;
+  color: @base;
 }
 
 #battery.low:not(.charging) {
-  background: #e78284;
-  /* Text */
-  color: @mantle;
+  background: @red;
+  color: @text;
 }
 
 #battery.critical:not(.charging) {
-  background: #e78284;
-  /* Text */
-  color: @mantle;
+  background: @red;
+  color: @text;
   animation-name: blink;
   animation-duration: 0.75s;
   animation-timing-function: linear;
@@ -199,9 +191,7 @@ tooltip {
 
 @keyframes blink {
   to {
-    color: #e78284;
-    /* Red */
-    background: #eebebe;
-    /* Text */
+    color: @red;
+    background: @text;
   }
 }

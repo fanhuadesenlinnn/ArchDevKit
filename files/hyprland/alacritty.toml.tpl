@@ -26,13 +26,13 @@ family = "JetBrainsMono Nerd Font Mono"
 style = "Italic"
 
 [colors.primary]
-background = "#232634"
-foreground = "#f0f3ff"
+background = "#1C1C1C"
+foreground = "#F8F8F2"
 
 [colors.cursor]
-text = "#232634"
-cursor = "#8AADF4"
+text = "#1C1C1C"
+cursor = "#81A2BE"
 
 [colors.selection]
-text = "#F0F3FF"
-background = "#4A5068"
+text = "#F8F8F2"
+background = "#44475A"
