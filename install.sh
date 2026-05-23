@@ -46,6 +46,9 @@ ArchDevKit - Arch Linux 工作站初始化工具
   --no-sddm                 不启用 SDDM
   --nvidia                  安装 NVIDIA Wayland 相关包
   --gpu TYPE                指定 GPU 类型：auto / intel / amd / nvidia / vmware / virtio / qxl / virtualbox / none
+  --vm-dynamic-resize       虚拟机使用动态分辨率
+  --no-vm-dynamic-resize    虚拟机使用固定 fallback 分辨率
+  --vm-monitor-mode MODE    指定虚拟机固定 fallback 分辨率
   --monaco                  安装 Monaco 字体
   --browser-package NAME    指定桌面浏览器安装包
   --browser-app COMMAND     指定桌面浏览器启动命令
@@ -94,6 +97,10 @@ parse_args() {
       --nvidia) GPU_TYPE="nvidia"; shift ;;
       --gpu) GPU_TYPE="${2:-auto}"; shift 2 ;;
       --gpu=*) GPU_TYPE="${1#*=}"; shift ;;
+      --vm-dynamic-resize) VM_HYPRLAND_DYNAMIC_RESIZE=1; shift ;;
+      --no-vm-dynamic-resize) VM_HYPRLAND_DYNAMIC_RESIZE=0; shift ;;
+      --vm-monitor-mode) VM_HYPRLAND_MONITOR_MODE="${2:-1920x1080@60}"; VMWARE_HYPRLAND_MONITOR_MODE="${VM_HYPRLAND_MONITOR_MODE}"; shift 2 ;;
+      --vm-monitor-mode=*) VM_HYPRLAND_MONITOR_MODE="${1#*=}"; VMWARE_HYPRLAND_MONITOR_MODE="${VM_HYPRLAND_MONITOR_MODE}"; shift ;;
       --monaco) INSTALL_MONACO_FONT=1; shift ;;
       --no-monaco) INSTALL_MONACO_FONT=0; shift ;;
       --browser-package) BROWSER_PACKAGE="${2:-}"; shift 2 ;;
@@ -169,6 +176,7 @@ show_config() {
   echo "Docker 镜像源:        $(bool_text "${CONFIGURE_DOCKER_MIRRORS}")"
   echo "Hyprland SDDM:        $(bool_text "${ENABLE_SDDM}")"
   echo "GPU 类型:             ${GPU_TYPE}"
+  echo "VM 动态分辨率:        $(bool_text "${VM_HYPRLAND_DYNAMIC_RESIZE:-1}")"
   echo "VM 低延迟配置:        $(bool_text "${VM_HYPRLAND_LOW_LATENCY:-1}")"
   echo "VM 显示 fallback:     ${VM_HYPRLAND_MONITOR_MODE:-${VMWARE_HYPRLAND_MONITOR_MODE:-1920x1080@60}}"
   echo "Hyprland 配置模式:    ${HYPRLAND_CONFIG_MODE}"
@@ -415,6 +423,7 @@ show_plan() {
   if plan_has_module "${modules_text}" "desktop"; then
     echo "  Hyprland SDDM:    $(bool_text "${ENABLE_SDDM}")"
     echo "  GPU 类型:         ${GPU_TYPE}"
+    echo "  VM 动态分辨率:    $(bool_text "${VM_HYPRLAND_DYNAMIC_RESIZE:-1}")"
     echo "  VM 低延迟配置:    $(bool_text "${VM_HYPRLAND_LOW_LATENCY:-1}")"
     echo "  Hyprland 配置:    ${HYPRLAND_CONFIG_MODE}"
     if hyprdots_mode_enabled; then

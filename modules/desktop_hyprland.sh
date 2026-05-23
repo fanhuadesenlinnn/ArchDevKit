@@ -299,8 +299,8 @@ install_gpu_packages_if_needed() {
       pacman_install vulkan-intel intel-media-driver vulkan-icd-loader
       ;;
     vmware)
-      log_warn "检测到 VMware 虚拟显卡；安装 VMware Tools、Mesa 检测工具和软件渲染兜底"
-      pacman_install open-vm-tools vulkan-swrast mesa-utils
+      log_warn "检测到 VMware 虚拟显卡；安装 VMware Tools、交互插件依赖、Mesa 检测工具和软件渲染兜底"
+      pacman_install open-vm-tools gtkmm3 libxtst vulkan-swrast mesa-utils
       ;;
     virtio|qxl)
       log_warn "检测到虚拟显卡 ${gpu}；安装 QEMU/SPICE guest agent、Mesa 检测工具和软件渲染兜底"
@@ -325,6 +325,7 @@ install_desktop_runtime_helpers() {
   log_info "安装桌面运行时辅助脚本：${helper}"
   if [[ "${DRY_RUN:-0}" -eq 1 ]]; then
     echo "+ write ${helper}"
+    install_vmware_user_helper_if_needed
     return 0
   fi
 
@@ -357,6 +358,69 @@ notify-send "Terminal unavailable" "Install alacritty or foot." 2>/dev/null || t
 exit 127
 EOF
   chmod +x "${helper}"
+
+  install_vmware_user_helper_if_needed
+}
+
+install_vmware_user_helper_if_needed() {
+  [[ "$(effective_gpu_type)" == "vmware" ]] || return 0
+
+  local helper="${HOME}/.local/bin/archdevkit-vmware-user"
+  log_info "安装 VMware Wayland 会话辅助脚本：${helper}"
+
+  if [[ "${DRY_RUN:-0}" -eq 1 ]]; then
+    echo "+ write ${helper}"
+    return 0
+  fi
+
+  mkdir -p "$(dirname "${helper}")"
+  cat > "${helper}" <<'EOF'
+#!/usr/bin/env bash
+set -u
+
+log_dir="${XDG_CACHE_HOME:-${HOME}/.cache}/archdevkit"
+log_file="${log_dir}/vmware-user.log"
+mkdir -p "${log_dir}"
+
+log() {
+  printf '[%s] %s\n' "$(date '+%F %T')" "$*" >>"${log_file}"
+}
+
+if pgrep -u "$(id -u)" -f '(^|[[:space:]/])vmtoolsd([[:space:]].*)?vmusr|(^|[[:space:]/])vmware-user-suid-wrapper([[:space:]]|$)|(^|[[:space:]/])vmware-user([[:space:]]|$)' >/dev/null 2>&1; then
+  log "vmware user process already running"
+  exit 0
+fi
+
+if ! command -v vmware-user-suid-wrapper >/dev/null 2>&1; then
+  log "vmware-user-suid-wrapper not found"
+  exit 0
+fi
+
+runtime_dir="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+wayland_display="${WAYLAND_DISPLAY:-}"
+
+for _ in 1 2 3 4 5 6 7 8 9 10; do
+  if [[ -n "${wayland_display}" && -S "${runtime_dir}/${wayland_display}" ]]; then
+    break
+  fi
+  for socket in "${runtime_dir}"/wayland-*; do
+    [[ -S "${socket}" ]] || continue
+    wayland_display="$(basename "${socket}")"
+    break
+  done
+  [[ -n "${wayland_display}" && -S "${runtime_dir}/${wayland_display}" ]] && break
+  sleep 0.2
+done
+
+wayland_display="${wayland_display:-wayland-1}"
+
+export XDG_SESSION_TYPE="${XDG_SESSION_TYPE:-wayland}"
+export WAYLAND_DISPLAY="${WAYLAND_DISPLAY:-${wayland_display}}"
+
+log "starting vmware-user-suid-wrapper with WAYLAND_DISPLAY=${WAYLAND_DISPLAY}"
+exec vmware-user-suid-wrapper
+EOF
+  chmod +x "${helper}"
 }
 
 enable_desktop_services() {
@@ -376,6 +440,8 @@ enable_vmware_services_if_needed() {
   [[ "$(effective_gpu_type)" == "vmware" ]] || return 0
 
   log_info "启用 VMware Tools 服务"
+  ensure_vmware_wayland_input_support
+
   if systemd_system_unit_exists vmtoolsd.service; then
     run_sudo systemctl enable --now vmtoolsd.service || \
       log_warn "vmtoolsd.service 启用失败，可稍后手动处理"
@@ -385,6 +451,25 @@ enable_vmware_services_if_needed() {
     run_sudo systemctl enable --now vmware-vmblock-fuse.service || \
       log_warn "vmware-vmblock-fuse.service 启用失败，可稍后手动处理"
   fi
+}
+
+ensure_vmware_wayland_input_support() {
+  [[ "$(effective_gpu_type)" == "vmware" ]] || return 0
+
+  log_info "配置 VMware Wayland 鼠标集成所需 uinput 模块"
+  if [[ "${DRY_RUN:-0}" -eq 1 ]]; then
+    echo "+ modprobe uinput"
+    echo "+ write /etc/modules-load.d/archdevkit-vmware.conf"
+    return 0
+  fi
+
+  run_sudo modprobe uinput || log_warn "uinput 模块加载失败，可稍后手动执行 sudo modprobe uinput"
+
+  local tmp_file
+  tmp_file="$(mktemp)"
+  printf 'uinput\n' > "${tmp_file}"
+  run_sudo install -m 0644 "${tmp_file}" /etc/modules-load.d/archdevkit-vmware.conf
+  rm -f "${tmp_file}"
 }
 
 enable_qemu_services_if_needed() {
@@ -560,6 +645,7 @@ configure_hyprland_virtualization_env() {
   local hypr_conf="${HOME}/.config/hypr/hyprland.conf"
   local mode="${VM_HYPRLAND_MONITOR_MODE:-${VMWARE_HYPRLAND_MONITOR_MODE:-1920x1080@60}}"
   local tmp_file gpu
+  local dynamic_resize="${VM_HYPRLAND_DYNAMIC_RESIZE:-1}"
 
   [[ -f "${hypr_conf}" ]] || return 0
   gpu="$(effective_gpu_type)"
@@ -568,8 +654,21 @@ configure_hyprland_virtualization_env() {
     *) return 0 ;;
   esac
 
+  case "$(to_lower "${dynamic_resize}")" in
+    1|true|yes|on) dynamic_resize=1 ;;
+    0|false|no|off) dynamic_resize=0 ;;
+    *)
+      log_warn "VM_HYPRLAND_DYNAMIC_RESIZE=${dynamic_resize} 无法识别，默认启用动态分辨率"
+      dynamic_resize=1
+      ;;
+  esac
+
   if [[ "${DRY_RUN:-0}" -eq 1 ]]; then
-    echo "+ set VM Hyprland monitor fallback ${mode} in ${hypr_conf}"
+    if [[ "${dynamic_resize}" -eq 1 ]]; then
+      echo "+ keep VM Hyprland monitor dynamic in ${hypr_conf}"
+    else
+      echo "+ set VM Hyprland monitor fallback ${mode} in ${hypr_conf}"
+    fi
     echo "+ enable VM guest agent autostart for ${gpu} in ${hypr_conf}"
     echo "+ apply low-latency Hyprland overrides for ${gpu} in ${hypr_conf}"
     return 0
@@ -579,27 +678,52 @@ configure_hyprland_virtualization_env() {
   sed \
     -e '/^### ArchDevKit VM integration ###$/,/^### End ArchDevKit VM integration ###$/d' \
     -e '/^exec-once = vmware-user-suid-wrapper$/d' \
+    -e '/^exec-once = .*archdevkit-vmware-user$/d' \
     -e '/^exec-once = spice-vdagent$/d' \
     -e '/^exec-once = VBoxClient-all$/d' \
-    -e 's/^monitor[[:space:]]*=[[:space:]]*,preferred,auto,\(auto\|1\)[[:space:]]*$/monitor=,'"${mode}"',auto,1/' \
-    -e 's/^monitor[[:space:]]*=[[:space:]]*Virtual-1,.*/monitor=,'"${mode}"',auto,1/' \
     "${hypr_conf}" > "${tmp_file}"
 
-  if ! grep -Eq '^monitor[[:space:]]*=[[:space:]]*,'"${mode//./\\.}"',' "${tmp_file}"; then
-    local with_monitor
-    with_monitor="$(mktemp)"
-    {
-      printf 'monitor=,%s,auto,1\n' "${mode}"
-      cat "${tmp_file}"
-    } > "${with_monitor}"
-    mv "${with_monitor}" "${tmp_file}"
+  local monitor_file
+  monitor_file="$(mktemp)"
+  if [[ "${dynamic_resize}" -eq 1 ]]; then
+    sed \
+      -e 's/^monitor[[:space:]]*=[[:space:]]*,.*$/monitor=,preferred,auto,1/' \
+      -e 's/^monitor[[:space:]]*=[[:space:]]*Virtual-1,.*$/monitor=,preferred,auto,1/' \
+      "${tmp_file}" > "${monitor_file}"
+  else
+    sed \
+      -e 's/^monitor[[:space:]]*=[[:space:]]*,preferred,auto,\(auto\|1\)[[:space:]]*$/monitor=,'"${mode}"',auto,1/' \
+      -e 's/^monitor[[:space:]]*=[[:space:]]*Virtual-1,.*/monitor=,'"${mode}"',auto,1/' \
+      "${tmp_file}" > "${monitor_file}"
+  fi
+  mv "${monitor_file}" "${tmp_file}"
+
+  if [[ "${dynamic_resize}" -eq 1 ]]; then
+    if ! grep -Eq '^monitor[[:space:]]*=[[:space:]]*,preferred,auto,1[[:space:]]*$' "${tmp_file}"; then
+      monitor_file="$(mktemp)"
+      {
+        printf 'monitor=,preferred,auto,1\n'
+        cat "${tmp_file}"
+      } > "${monitor_file}"
+      mv "${monitor_file}" "${tmp_file}"
+    fi
+  else
+    if ! grep -Eq '^monitor[[:space:]]*=[[:space:]]*,'"${mode//./\\.}"',' "${tmp_file}"; then
+      monitor_file="$(mktemp)"
+      {
+        printf 'monitor=,%s,auto,1\n' "${mode}"
+        cat "${tmp_file}"
+      } > "${monitor_file}"
+      mv "${monitor_file}" "${tmp_file}"
+    fi
   fi
 
   {
     printf '\n### ArchDevKit VM integration ###\n'
     case "${gpu}" in
       vmware)
-        printf 'exec-once = vmware-user-suid-wrapper\n'
+        printf '# VMware mouse/clipboard and dynamic resize for Wayland sessions.\n'
+        printf 'exec-once = %s/.local/bin/archdevkit-vmware-user\n' "${HOME}"
         ;;
       virtio|qxl)
         printf 'exec-once = spice-vdagent\n'
