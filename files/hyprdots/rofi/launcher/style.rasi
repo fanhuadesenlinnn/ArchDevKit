@@ -1,4 +1,4 @@
-/***** Rofi 应用启动器样式：控制启动器窗口、输入框、列表和颜色变量。 *****/
+/***** Rofi 应用启动器样式：i3 Clear 风格，黑底、清晰文字、蓝色焦点。 *****/
 /*****----- Configuration -----*****/
 configuration {
     modi:                       "drun,window";
@@ -17,17 +17,16 @@ configuration {
 /*****----- Global Properties -----*****/
 * {
     font:                        "JetBrainsMono Nerd Font 11";
-    background:                  #232634;
-    background-alt:              #34384a;
-    foreground:                  #f0f3ff;
-    selected:                    #8aadf4;
-    active:                      #91d7e3;
-    urgent:                      #e78284;
+    background:                  #1c1c1c;
+    background-alt:              #282a36;
+    foreground:                  #f8f8f2;
+    selected:                    #6272a4;
+    active:                      #81a2be;
+    urgent:                      #ff5555;
 }
 
 /*****----- Main Window -----*****/
 window {
-    /* properties for window widget */
     transparency:                "real";
     location:                    center;
     anchor:                      center;
@@ -36,9 +35,10 @@ window {
     x-offset:                    0px;
     y-offset:                    0px;
 
-    /* properties for all widgets */
     enabled:                     true;
     border-radius:               6px;
+    border:                      2px;
+    border-color:                @selected;
     cursor:                      "default";
     background-color:            @background;
 }
@@ -76,8 +76,8 @@ textbox-prompt-colon {
     str:                         "Apps";
     padding:                     10px 18px 10px 15px;
     border-radius:               6px;
-    background-color:           #8aadf4;
-    text-color:                  @background;
+    background-color:            @selected;
+    text-color:                  @foreground;
 }
 entry {
     enabled:                     true;
@@ -85,10 +85,10 @@ entry {
     width:                       200px;
     padding:                     12px 16px 8px 16px;
     border-radius:               6px;
-    background-color:            @background;
+    background-color:            @background-alt;
     text-color:                  inherit;
     cursor:                      text;
-    placeholder-color:           inherit;
+    placeholder-color:           #bfbfbf;
 }
 dummy {
     expand:                      true;
@@ -111,7 +111,7 @@ button {
 }
 button selected {
     background-color:            @selected;
-    text-color:                  @background;
+    text-color:                  @foreground;
 }
 
 /*****----- Listview -----*****/
@@ -148,8 +148,8 @@ element {
 }
 element selected.normal {
     font:                        "JetBrainsMono Nerd Font 10";
-    background-color:           #8aadf4;
-    text-color:                  @background;
+    background-color:            @selected;
+    text-color:                  @foreground;
 }
 element-icon {
     background-color:            transparent;
