@@ -47,27 +47,27 @@ input {
 
 # 窗口间距、边框和默认布局。
 general {
-    gaps_in = 5
-    gaps_out = 10
-    border_size = 2
+    gaps_in = 4
+    gaps_out = 6
+    border_size = 3
     layout = dwindle
-    col.active_border = rgba(8aadf4ff)
-    col.inactive_border = rgba(4a5068ff)
+    col.active_border = rgba(6272a4ff)
+    col.inactive_border = rgba(282a36ff)
 }
 
-# 圆角、阴影和模糊效果；性能较弱的机器可关闭 blur/shadow。
+# 清晰优先：少圆角、无模糊、无阴影，避免文字和边界发糊。
 decoration {
-    rounding = 10
+    rounding = 0
     shadow {
-        enabled = true
+        enabled = false
         range = 12
         render_power = 3
         color = rgba(00000055)
     }
     blur {
-        enabled = true
-        size = 6
-        passes = 2
+        enabled = false
+        size = 3
+        passes = 1
         new_optimizations = true
     }
 }
