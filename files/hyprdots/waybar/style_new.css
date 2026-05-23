@@ -7,7 +7,7 @@
   border: none;
   border-radius: 0;
   min-height: 0;
-  font-family: "Noto Sans CJK SC", "JetBrainsMono Nerd Font", sans-serif;
+  font-family: "Monaco", "Noto Sans CJK SC", "Noto Color Emoji", sans-serif;
   font-size: 14px;
   font-weight: 600;
 }
@@ -84,7 +84,7 @@ tooltip {
   color: @text;
   background: @surface0;
   border: 1px solid @surface2;
-  font-family: "Noto Sans CJK SC", "JetBrainsMono Nerd Font", sans-serif;
+  font-family: "Monaco", "Noto Sans CJK SC", "Noto Color Emoji", sans-serif;
   font-size: 13px;
   padding: 6px;
 }

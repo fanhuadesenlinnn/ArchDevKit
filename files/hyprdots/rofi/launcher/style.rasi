@@ -16,7 +16,7 @@ configuration {
 
 /*****----- Global Properties -----*****/
 * {
-    font:                        "JetBrainsMono Nerd Font 11";
+    font:                        "Monaco 11";
     background:                  #1c1c1c;
     background-alt:              #282a36;
     foreground:                  #f8f8f2;
@@ -147,7 +147,7 @@ element {
     cursor:                      pointer;
 }
 element selected.normal {
-    font:                        "JetBrainsMono Nerd Font 10";
+    font:                        "Monaco 10";
     background-color:            @selected;
     text-color:                  @foreground;
 }

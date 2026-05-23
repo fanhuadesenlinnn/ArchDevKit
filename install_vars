@@ -68,7 +68,12 @@ P10K_CONFIG_SOURCE="${SCRIPT_DIR}/files/p10k.clean.zsh"
 # =========================
 INSTALL_CN_FONTS=1
 INSTALL_NERD_FONTS=1
-INSTALL_MONACO_FONT=0
+INSTALL_MONACO_FONT=1
+MONACO_AS_SYSTEM_FONT=1
+SYSTEM_FONT_FAMILY="Monaco"
+SYSTEM_MONOSPACE_FONT_FAMILY="Monaco"
+SYSTEM_CJK_FONT_FAMILY="Noto Sans CJK SC"
+SYSTEM_EMOJI_FONT_FAMILY="Noto Color Emoji"
 MONACO_FONT_URL="http://www.gringod.com/wp-upload/software/Fonts/Monaco_Linux.ttf"
 MONACO_FONT_DIR="/usr/share/fonts/truetype/Monaco"
 

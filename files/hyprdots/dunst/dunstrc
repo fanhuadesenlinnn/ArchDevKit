@@ -36,7 +36,7 @@
     history_length = 20
     show_age_threshold = 60
     markup = "full"
-    font = "Noto Sans CJK SC 11"
+    font = "Monaco 11"
     format = "<b>%s</b>\n%b"
     word_wrap = "yes"
     sort = "yes"

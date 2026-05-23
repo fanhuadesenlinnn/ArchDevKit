@@ -1,5 +1,5 @@
 # Mako 通知配置：i3 Clear 风格，黑底、清晰文字、蓝灰边框。
-font=Noto Sans CJK SC 11
+font=Monaco 11
 background-color=#1c1c1c
 text-color=#f8f8f2
 border-color=#6272a4
