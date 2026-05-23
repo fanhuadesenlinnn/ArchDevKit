@@ -11,6 +11,53 @@ setup_mise_shell() {
   log_warn "mise 初始化已写入 ~/.bashrc 和 ~/.zshrc，重新打开终端后完全生效"
 }
 
+mise_china_env_prefix() {
+  local envs=()
+
+  [[ "${ENABLE_CHINA_MIRROR:-0}" -eq 1 ]] || return 0
+
+  [[ -n "${NODE_MIRROR_URL:-}" ]] && envs+=("MISE_NODE_MIRROR_URL=${NODE_MIRROR_URL}")
+  [[ -n "${GO_DOWNLOAD_MIRROR:-}" ]] && envs+=("MISE_GO_DOWNLOAD_MIRROR=${GO_DOWNLOAD_MIRROR}")
+
+  if [[ "${#envs[@]}" -gt 0 ]]; then
+    printf 'env'
+    printf ' %q' "${envs[@]}"
+  fi
+}
+
+mise_run() {
+  local env_prefix
+  env_prefix="$(mise_china_env_prefix)"
+
+  if [[ -n "${env_prefix}" ]]; then
+    # shellcheck disable=SC2086
+    run_cmd ${env_prefix} mise "$@"
+  else
+    run_cmd mise "$@"
+  fi
+}
+
+configure_mise_china_mirrors() {
+  [[ "${ENABLE_CHINA_MIRROR:-0}" -eq 1 ]] || return 0
+
+  log_info "配置 mise 国内下载镜像"
+
+  if [[ -n "${NODE_MIRROR_URL:-}" ]]; then
+    log_info "配置 mise Node.js 镜像：${NODE_MIRROR_URL}"
+    mise_run settings set node.mirror_url "${NODE_MIRROR_URL}" || true
+  fi
+
+  if [[ -n "${GO_DOWNLOAD_MIRROR:-}" ]]; then
+    log_info "配置 mise Go 下载镜像：${GO_DOWNLOAD_MIRROR}"
+    mise_run settings set go.download_mirror "${GO_DOWNLOAD_MIRROR}" || true
+  fi
+
+  if [[ "${ENABLE_MISE_GITHUB_URL_REPLACEMENT:-0}" -eq 1 && "${ENABLE_GITHUB_PROXY:-0}" -eq 1 && -n "${GITHUB_PROXY:-}" ]]; then
+    log_info "配置 mise GitHub URL 替换：${GITHUB_PROXY}"
+    mise_run settings set url_replacements.github "${GITHUB_PROXY}https://github.com" || true
+  fi
+}
+
 install_runtime_env() {
   if is_done "runtime"; then
     log_info "Runtime 环境已处理，跳过"
@@ -20,18 +67,19 @@ install_runtime_env() {
   log_info "开始安装 Runtime 环境：mise + Node.js/npm/Python/Go"
   pacman_install mise
   setup_mise_shell
+  configure_mise_china_mirrors
 
   log_info "使用 mise 安装 Node.js ${NODE_VERSION}"
-  run_cmd mise use -g node@"${NODE_VERSION}"
+  mise_run use -g node@"${NODE_VERSION}"
 
   log_info "使用 Node.js 自带 npm 安装 npm ${NPM_VERSION}"
   run_cmd mise exec -- npm install -g npm@"${NPM_VERSION}"
 
   log_info "使用 mise 安装 Python ${PYTHON_VERSION}"
-  run_cmd mise use -g python@"${PYTHON_VERSION}"
+  mise_run use -g python@"${PYTHON_VERSION}"
 
   log_info "使用 mise 安装 Go ${GO_VERSION}"
-  run_cmd mise use -g go@"${GO_VERSION}"
+  mise_run use -g go@"${GO_VERSION}"
 
   if [[ "${ENABLE_CHINA_MIRROR:-0}" -eq 1 ]]; then
     log_info "配置 npm 国内源：${NPM_REGISTRY}"
