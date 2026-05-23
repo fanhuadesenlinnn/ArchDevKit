@@ -158,7 +158,7 @@ GPU 默认使用 `GPU_TYPE=auto` 根据 `lspci` 和 `systemd-detect-virt` 自动
 
 虚拟机建议在宿主机管理器里启用 3D 图形加速和鼠标/剪贴板集成。脚本会按环境处理 guest agent：VMware 安装并启用 `open-vm-tools`、`gtkmm3`、`libxtst`、`vmtoolsd`、`vmblock` 和 Wayland 用户会话辅助脚本，QEMU/KVM virtio 或 QXL 安装并启用 `qemu-guest-agent` / `spice-vdagent`，VirtualBox 安装并启用 `virtualbox-guest-utils`。VMware 默认保持 `monitor=,preferred,auto,1`，让 `vmware-user-suid-wrapper` 接管鼠标释放、剪贴板和随窗口变化的动态分辨率；如确实需要固定 fallback 分辨率，可设置 `VM_HYPRLAND_DYNAMIC_RESIZE=0` 或使用 `--no-vm-dynamic-resize --vm-monitor-mode 1920x1080@60`。生成的虚拟机配置默认关闭动画、阴影和模糊以降低 VM 延迟；可用 `VM_HYPRLAND_LOW_LATENCY=0` 关闭这组低延迟覆盖。特殊情况下可设置 `VMWARE_FORCE_SOFTWARE_RENDERER=1` 强制使用软件渲染。
 
-中文输入法默认使用 Fcitx5 + Rime，默认方案为 `luna_pinyin_simp`。默认不拉取个人 Rime 配置仓库，直接使用 `fcitx5-rime` 和 `rime-luna-pinyin` 提供的默认配置；后续需要个人配置时再通过 `--rime-repo` 或 `INSTALL_RIME_CONFIG=1` 安装到 `~/.local/share/fcitx5/rime`。
+中文输入法默认使用 Fcitx5 + Rime，默认方案为 `luna_pinyin_simp`。安装桌面模块时会默认拉取 `https://github.com/fanhuadesenlinnn/rime-config.git`，并把仓库配置安装到 `~/.local/share/fcitx5/rime`；如果临时不想使用个人配置，可通过 `--no-rime-config` 或 `INSTALL_RIME_CONFIG=0` 关闭。
 
 Obsidian 是可选内容，默认不安装，避免为了非必需应用触发额外 AUR 安装。需要启用时可以显式打开：
 
