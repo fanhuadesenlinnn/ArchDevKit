@@ -41,9 +41,6 @@ check_rime_defaults() {
   }
 }
 
-check_bash_syntax
-check_required_desktop_contracts
-check_rime_defaults
 assert_file_contains() {
   local file="$1" pattern="$2" message="$3"
   if ! grep -Eq "${pattern}" "${file}"; then
@@ -60,6 +57,25 @@ assert_file_not_contains() {
     sed -n '1,120p' "${file}" >&2
     return 1
   fi
+}
+
+check_readable_desktop_theme() {
+  assert_file_contains "${ROOT_DIR}/files/hyprdots/waybar/style_new.css" 'font-size:[[:space:]]*14px;' \
+    "Waybar 字号应保持 14px，避免状态栏文字偏小。"
+  assert_file_contains "${ROOT_DIR}/files/hyprdots/waybar/style_new.css" 'font-family:[[:space:]]*"Noto Sans CJK SC", "JetBrainsMono Nerd Font"' \
+    "Waybar 应优先使用更清晰的中文 UI 字体，并保留 Nerd Font fallback。"
+  assert_file_contains "${ROOT_DIR}/files/hyprdots/dunst/dunstrc" '^[[:space:]]*transparency = 0$' \
+    "Dunst 通知应使用不透明背景，避免壁纸/窗口透出导致文字发糊。"
+  assert_file_contains "${ROOT_DIR}/files/hyprdots/dunst/dunstrc" 'font = "Noto Sans CJK SC 11"' \
+    "Dunst 通知应使用清晰的中文 UI 字体。"
+  assert_file_contains "${ROOT_DIR}/files/hyprdots/alacritty/alacritty.toml" 'foreground = "#f0f3ff"' \
+    "Alacritty 前景色应保持清晰的柔和浅色。"
+  assert_file_contains "${ROOT_DIR}/files/hyprdots/gtk-3.0/settings.ini" '^gtk-font-name=Noto Sans CJK SC 11$' \
+    "GTK 3 默认字体应使用 Noto Sans CJK SC 11。"
+  assert_file_contains "${ROOT_DIR}/files/hyprdots/gtk-4.0/settings.ini" '^gtk-font-name=Noto Sans CJK SC 11$' \
+    "GTK 4 默认字体应使用 Noto Sans CJK SC 11。"
+  assert_file_not_contains "${ROOT_DIR}/files/hyprdots/rofi/launcher/style.rasi" 'Iosevka Nerd Font 10|JetBrainsMono Nerd Font 8' \
+    "Rofi 启动器不应继续使用偏小偏窄的旧字体。"
 }
 
 check_vmware_hyprland_contracts() (
@@ -138,6 +154,8 @@ check_vmware_hyprland_contracts() (
 
 check_bash_syntax
 check_required_desktop_contracts
+check_rime_defaults
+check_readable_desktop_theme
 check_vmware_hyprland_contracts
 
 echo "ArchDevKit check passed."

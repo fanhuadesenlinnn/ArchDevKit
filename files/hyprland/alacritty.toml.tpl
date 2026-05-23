@@ -11,20 +11,28 @@ opacity = 1.0
 
 # 字体建议使用 Nerd Font，保证图标和终端提示符能正常显示。
 [font]
-size = 12.0
+size = 12.5
 
 [font.normal]
-family = "IosevkaTerm Nerd Font Mono"
+family = "JetBrainsMono Nerd Font Mono"
 style = "Regular"
 
 [font.bold]
-family = "IosevkaTerm Nerd Font Mono"
+family = "JetBrainsMono Nerd Font Mono"
 style = "Bold"
 
 [font.italic]
-family = "IosevkaTerm Nerd Font Mono"
+family = "JetBrainsMono Nerd Font Mono"
 style = "Italic"
 
 [colors.primary]
-background = "#11111B"
-foreground = "#CDD6F4"
+background = "#232634"
+foreground = "#f0f3ff"
+
+[colors.cursor]
+text = "#232634"
+cursor = "#8AADF4"
+
+[colors.selection]
+text = "#F0F3FF"
+background = "#4A5068"

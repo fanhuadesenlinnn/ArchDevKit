@@ -5,7 +5,7 @@
   "layer": "top",
   "position": "top",
   "spacing": 0,
-  "height": 30,
+  "height": 32,
   "margin-bottom": 0,
   "modules-left": [
     "hyprland/workspaces",
@@ -93,12 +93,12 @@
   // CPU/内存模块：点击进入 btop 任务管理器。
   "cpu": {
     "interval": 1,
-    "format": "<span color='#89b4fa'>CPU</span> {usage}%",
+    "format": "<span color='#8aadf4'>CPU</span> {usage}%",
     "on-click": "~/.local/bin/archdevkit-terminal -e btop"
   },
   "memory": {
     "interval": 1,
-    "format": "<span color='#89b4fa'>MEM</span> {percentage}%",
+    "format": "<span color='#8aadf4'>MEM</span> {percentage}%",
     "on-click": "~/.local/bin/archdevkit-terminal -e btop",
     "tooltip-format": "{used}/{total} GiB"
   },

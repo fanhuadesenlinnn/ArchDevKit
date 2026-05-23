@@ -152,6 +152,8 @@ Hyprland 桌面默认安装 Google Chrome，不安装 Firefox。默认浏览器�
 
 Hyprland 桌面终端默认使用 `~/.local/bin/archdevkit-terminal` 统一入口，优先启动 Alacritty，并以 foot 作为兜底；脚本只安装和维护这两套终端相关配置。
 
+桌面主题默认采用偏深蓝灰的柔和暗色配置，抬高 Waybar、Rofi、Dunst、Alacritty、GTK 和锁屏文字的可读性：背景避免纯黑，正文使用偏暖浅色，强调色以低饱和蓝/青/绿为主，尽量保证文字清晰但不形成刺眼的高反差。
+
 `--no-sddm` 会同时跳过 SDDM 包安装和服务启用；`ENABLE_BLUETOOTH=0` 会跳过蓝牙相关包和服务启用。
 
 GPU 默认使用 `GPU_TYPE=auto` 根据 `lspci` 和 `systemd-detect-virt` 自动识别。物理机上会按 Intel、AMD、NVIDIA 安装对应 Wayland/Vulkan/媒体驱动；VMware、virtio、QXL、VirtualBox 虚拟显卡会安装对应 guest agent、Mesa 检测工具和软件渲染兜底。脚本会优先检测可用的硬件/3D 渲染器，只有检测不到可用渲染器时才向 Hyprland 配置写入 llvmpipe 兜底，避免 VM 在支持 3D 加速时被强制降速。

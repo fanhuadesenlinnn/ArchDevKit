@@ -30,7 +30,7 @@ confirm_cmd() {
 }
 
 confirm_exit() {
-  printf "<span foreground='#a6e3a1'>%s</span>\n<span foreground='#f38ba8'>%s</span>\n" "$yes" "$no" | confirm_cmd
+  printf "<span foreground='#a6d189'>%s</span>\n<span foreground='#e78284'>%s</span>\n" "$yes" "$no" | confirm_cmd
 }
 
 run_rofi() {

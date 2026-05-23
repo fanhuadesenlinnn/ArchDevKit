@@ -18,7 +18,7 @@ choice="$(
 case "$choice" in
 "$wipe_label")
   confirmation="$(
-    printf "<span foreground='#a6e3a1'>yes</span>\n<span foreground='#f38ba8'>no</span>\n" |
+    printf "<span foreground='#a6d189'>yes</span>\n<span foreground='#e78284'>no</span>\n" |
       rofi -markup-rows -dmenu -p "Confirmation" -mesg "Are you sure?" -theme "$dir/confirmation.rasi"
   )"
 
