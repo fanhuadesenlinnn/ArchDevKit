@@ -24,6 +24,7 @@ install_desktop_hyprland() {
   configure_fcitx5_env
   configure_rime_if_needed
   generate_hyprland_config
+  configure_hyprland_gpu_env
   enable_sddm_if_needed
   verify_hyprland
 
@@ -61,6 +62,35 @@ desktop_needs_archlinuxcn() {
   fi
 
   return 1
+}
+
+detect_gpu_type() {
+  local pci_info
+  pci_info="$(lspci 2>/dev/null | grep -Ei 'VGA|3D|Display' || true)"
+
+  if grep -qi 'nvidia' <<<"${pci_info}"; then
+    printf '%s\n' "nvidia"
+  elif grep -qi 'vmware' <<<"${pci_info}"; then
+    printf '%s\n' "vmware"
+  elif grep -qi 'virtio' <<<"${pci_info}"; then
+    printf '%s\n' "virtio"
+  elif grep -qi 'qxl' <<<"${pci_info}"; then
+    printf '%s\n' "qxl"
+  elif grep -qi 'amd|ati' <<<"${pci_info}"; then
+    printf '%s\n' "amd"
+  elif grep -qi 'intel' <<<"${pci_info}"; then
+    printf '%s\n' "intel"
+  else
+    printf '%s\n' "none"
+  fi
+}
+
+effective_gpu_type() {
+  if [[ "${GPU_TYPE:-auto}" == "auto" ]]; then
+    detect_gpu_type
+  else
+    printf '%s\n' "${GPU_TYPE}"
+  fi
 }
 
 desktop_font_awesome_package() {
@@ -115,6 +145,8 @@ desktop_hyprdots_packages() {
     pipewire-pulse
     playerctl
     polkit
+    qt5-wayland
+    qt6-wayland
     rofi
     rtkit
     slurp
@@ -261,32 +293,29 @@ install_hyprdots_optional_packages() {
 }
 
 install_gpu_packages_if_needed() {
-  local gpu="${GPU_TYPE}"
-
-  if [[ "${gpu}" == "auto" ]]; then
-    if lspci 2>/dev/null | grep -Ei 'VGA|3D|Display' | grep -qi 'nvidia'; then
-      gpu="nvidia"
-    elif lspci 2>/dev/null | grep -Ei 'VGA|3D|Display' | grep -qi 'amd|ati'; then
-      gpu="amd"
-    elif lspci 2>/dev/null | grep -Ei 'VGA|3D|Display' | grep -qi 'intel'; then
-      gpu="intel"
-    else
-      gpu="none"
-    fi
-  fi
+  local gpu
+  gpu="$(effective_gpu_type)"
 
   log_info "检测到 GPU 类型：${gpu}"
 
   case "${gpu}" in
     nvidia)
       log_warn "NVIDIA Wayland 可能需要额外配置 nvidia_drm.modeset=1"
-      pacman_install nvidia nvidia-utils nvidia-settings egl-wayland
+      pacman_install nvidia nvidia-utils nvidia-settings egl-wayland vulkan-icd-loader
       ;;
     amd)
-      pacman_install vulkan-radeon libva-mesa-driver mesa-vdpau
+      pacman_install vulkan-radeon libva-mesa-driver mesa-vdpau vulkan-icd-loader
       ;;
     intel)
-      pacman_install vulkan-intel intel-media-driver
+      pacman_install vulkan-intel intel-media-driver vulkan-icd-loader
+      ;;
+    vmware)
+      log_warn "检测到 VMware 虚拟显卡；安装 VMware 工具和软件渲染栈以避免 Hyprland EGL 初始化失败"
+      pacman_install open-vm-tools vulkan-swrast mesa-utils
+      ;;
+    virtio|qxl)
+      log_warn "检测到虚拟显卡 ${gpu}；安装软件渲染栈作为 Wayland 兜底"
+      pacman_install vulkan-swrast mesa-utils
       ;;
     none)
       log_warn "未检测到明确 GPU 类型，跳过专用驱动包"
@@ -346,6 +375,62 @@ configure_rime_if_needed() {
 
   install_rime_config_repo
   configure_fcitx5_rime_profile
+}
+
+hyprland_needs_software_renderer() {
+  case "$(effective_gpu_type)" in
+    vmware|virtio|qxl) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+configure_hyprland_gpu_env() {
+  local hypr_conf="${HOME}/.config/hypr/hyprland.conf"
+  local tmp_file gpu
+
+  [[ -f "${hypr_conf}" ]] || return 0
+  gpu="$(effective_gpu_type)"
+
+  if [[ "${DRY_RUN:-0}" -eq 1 ]]; then
+    if hyprland_needs_software_renderer; then
+      echo "+ enable Hyprland software renderer env for ${gpu} in ${hypr_conf}"
+    else
+      echo "+ remove Hyprland software renderer env for ${gpu} from ${hypr_conf}"
+    fi
+    return 0
+  fi
+
+  tmp_file="$(mktemp)"
+  sed \
+    -e '/^### ArchDevKit VM EGL fix ###$/,/^### End ArchDevKit VM EGL fix ###$/d' \
+    -e '/^env = LIBGL_ALWAYS_SOFTWARE,/d' \
+    -e '/^env = MESA_LOADER_DRIVER_OVERRIDE,/d' \
+    -e '/^env = GALLIUM_DRIVER,/d' \
+    -e '/^env = WLR_RENDERER_ALLOW_SOFTWARE,/d' \
+    "${hypr_conf}" > "${tmp_file}"
+
+  if hyprland_needs_software_renderer; then
+    local with_env
+    with_env="$(mktemp)"
+    {
+      cat <<EOF
+### ArchDevKit VM EGL fix ###
+# ${gpu} virtual GPU can fail EGL initialization on Hyprland; keep this scoped
+# to virtual GPUs so physical Intel/AMD/NVIDIA installs use hardware rendering.
+env = LIBGL_ALWAYS_SOFTWARE,1
+env = MESA_LOADER_DRIVER_OVERRIDE,llvmpipe
+env = GALLIUM_DRIVER,llvmpipe
+env = WLR_RENDERER_ALLOW_SOFTWARE,1
+### End ArchDevKit VM EGL fix ###
+
+EOF
+      cat "${tmp_file}"
+    } > "${with_env}"
+    mv "${with_env}" "${tmp_file}"
+  fi
+
+  install -m 0644 "${tmp_file}" "${hypr_conf}"
+  rm -f "${tmp_file}"
 }
 
 install_rime_config_repo() {
@@ -760,14 +845,35 @@ install_hyprdots_web_apps() {
   done < <(find "${source}" -maxdepth 1 -type f -name "*.desktop" | sort)
 }
 
+systemd_system_unit_exists() {
+  local unit="$1"
+  [[ -n "${unit}" ]] || die "systemd unit 名为空"
+
+  [[ -e "/etc/systemd/system/${unit}" ]] && return 0
+  [[ -e "/usr/lib/systemd/system/${unit}" ]] && return 0
+  [[ -e "/lib/systemd/system/${unit}" ]] && return 0
+
+  systemctl list-unit-files "${unit}" --no-legend 2>/dev/null | awk '{print $1}' | grep -Fxq "${unit}"
+}
+
 enable_sddm_if_needed() {
   [[ "${ENABLE_SDDM:-0}" -eq 1 ]] || {
     log_warn "当前配置未启用 SDDM"
     return 0
   }
 
+  if ! systemd_system_unit_exists sddm.service; then
+    log_warn "未检测到 sddm.service，尝试安装 SDDM 软件包"
+    install_required_pacman_package sddm
+    run_sudo systemctl daemon-reload || log_warn "systemd 重新加载失败，可稍后手动执行：sudo systemctl daemon-reload"
+  fi
+
+  systemd_system_unit_exists sddm.service || \
+    die "SDDM 软件包安装后仍未找到 sddm.service；请检查 sudo pacman -S sddm 的输出，或使用 --no-sddm 跳过登录管理器启用"
+
   log_info "启用 SDDM 登录管理器"
-  run_sudo systemctl enable sddm
+  run_sudo systemctl enable sddm.service || \
+    die "启用 SDDM 失败；如果已有其他登录管理器占用 display-manager.service，请先禁用它后重试"
   log_warn "SDDM 已设置为开机自启，重启后在登录界面选择 Hyprland"
 }
 

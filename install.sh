@@ -45,6 +45,7 @@ ArchDevKit - Arch Linux 工作站初始化工具
   --go-version VERSION      指定 Go 版本
   --no-sddm                 不启用 SDDM
   --nvidia                  安装 NVIDIA Wayland 相关包
+  --gpu TYPE                指定 GPU 类型：auto / intel / amd / nvidia / vmware / virtio / qxl / none
   --monaco                  安装 Monaco 字体
   --browser-package NAME    指定桌面浏览器安装包
   --browser-app COMMAND     指定桌面浏览器启动命令

@@ -122,6 +122,7 @@ bash install.sh nvim --github-proxy https://gh-proxy.com/
 --go-version VERSION      指定 Go 版本
 --no-sddm                 不启用 SDDM
 --nvidia                  安装 NVIDIA Wayland 相关包
+--gpu TYPE                指定 GPU 类型：auto / intel / amd / nvidia / vmware / virtio / qxl / none
 --monaco                  安装 Monaco 字体
 --browser-package NAME    指定桌面浏览器安装包
 --browser-app COMMAND     指定桌面浏览器启动命令
@@ -149,6 +150,8 @@ Hyprland 桌面默认使用内置的 hyprdots 配置，来源为 `fanhuadesenlin
 Hyprland 桌面默认安装 Google Chrome，不安装 Firefox。默认浏览器包为 `google-chrome`，启动命令为 `google-chrome-stable`；如果当前 pacman 源没有该包，脚本会先尝试按配置启用 `archlinuxcn`，仍不可用时会通过 `paru`/`yay` 安装。
 
 `--no-sddm` 会同时跳过 SDDM 包安装和服务启用；`ENABLE_BLUETOOTH=0` 会跳过蓝牙相关包和服务启用。
+
+GPU 默认使用 `GPU_TYPE=auto` 根据 `lspci` 自动识别。物理机上会按 Intel、AMD、NVIDIA 安装对应 Wayland/Vulkan/媒体驱动；VMware、virtio、QXL 虚拟显卡会安装软件渲染兜底，并只在生成的 Hyprland 配置里为虚拟显卡写入 llvmpipe 环境，避免影响后续物理机硬件渲染。
 
 中文输入法默认使用 Fcitx5 + Rime，默认方案为 `luna_pinyin_simp`。Rime 配置默认从独立仓库拉取并安装到 `~/.local/share/fcitx5/rime`：
 
