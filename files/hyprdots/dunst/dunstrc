@@ -1,3 +1,5 @@
+# Dunst 通知配置：控制通知弹窗位置、尺寸、颜色、图标和点击行为。
+# 修改后可执行 `pkill dunst; dunst &` 或重新登录让配置生效。
 [global]
     monitor = 0
     follow = none

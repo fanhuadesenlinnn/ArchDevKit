@@ -1,3 +1,4 @@
+-- 装饰模块：窗口圆角、透明度、模糊和阴影效果。
 hl.config({
 	decoration = {
 		dim_special = 0.2,

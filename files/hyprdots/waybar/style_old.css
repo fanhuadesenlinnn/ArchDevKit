@@ -1,3 +1,4 @@
+/* Waybar 旧版样式：更紧凑的圆角模块布局，配合 config_old.jsonc。 */
 @import 'mocha.css';
 
 * {
@@ -13,7 +14,7 @@
   background-color: transparent;
 }
 
-/* General Styling */
+/* 通用模块外观：背景、边距和圆角。 */
 tooltip,
 menu,
 #workspaces,
@@ -30,7 +31,7 @@ menu,
   border-radius: 6px;
 }
 
-/* Workspace */
+/* 工作区按钮：active 表示当前工作区。 */
 #workspaces {
   background: @crust;
   margin: 0;

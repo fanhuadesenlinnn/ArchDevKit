@@ -24,3 +24,4 @@
 @define-color base #1e1e2e;
 @define-color mantle #181825;
 @define-color crust #11111b;
+/* Catppuccin Mocha 调色板：Waybar 样式文件通过 @import 引入这些颜色变量。 */

@@ -1,3 +1,4 @@
+-- 通用外观模块：窗口间距、边框、布局和 dwindle/master 行为。
 hl.config({
 	general = {
 		gaps_in = 3,

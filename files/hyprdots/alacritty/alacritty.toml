@@ -1,11 +1,15 @@
+# Alacritty 终端配置：ArchDevKit 默认终端之一。
+# 字体、配色和窗口边距都在这里调整；启动命令由 ~/.local/bin/archdevkit-terminal 统一选择。
 [env]
 TERM = "xterm-256color"
 
+# 窗口交给 Hyprland 管理装饰，因此这里关闭原生标题栏。
 [window]
 padding = { x = 10, y = 10 }
 decorations = "None"
 opacity = 1.0
 
+# Nerd Font 用于显示图标、Powerline 提示符和部分 TUI 符号。
 [font]
 size = 12.0
 
@@ -25,6 +29,7 @@ style = "Italic"
 background = "#11111B"
 foreground = "#CDD6F4"
 
+# 以下颜色为 Catppuccin Mocha 风格，影响 ANSI 终端颜色。
 [colors.cursor]
 text = "#11111B"
 cursor = "#F5E0DC"

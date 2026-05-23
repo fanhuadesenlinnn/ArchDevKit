@@ -1,3 +1,4 @@
+-- 窗口规则模块：按应用 class 自动分配工作区。
 local function windowRule(class, workspace, silent)
 	if silent == nil then
 		silent = false

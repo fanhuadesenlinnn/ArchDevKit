@@ -90,3 +90,4 @@ element selected.normal {
     background-color: #cba6f7;
     text-color: #11111b;
 }
+/***** Rofi 电源操作确认框样式：避免误触关机/重启等危险操作。 *****/

@@ -110,3 +110,4 @@ textbox {
     background-color: transparent;
     text-color: @foreground;
 }
+/***** Rofi 电源菜单样式：控制关机、重启、锁屏等按钮的布局和配色。 *****/

@@ -182,3 +182,4 @@ error-message {
     background-color:            @background;
     text-color:                  @foreground;
 }
+/***** Rofi 动画选择样式：用于切换 Hyprland 动画方案。 *****/

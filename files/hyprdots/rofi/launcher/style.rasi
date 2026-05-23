@@ -1,3 +1,4 @@
+/***** Rofi 应用启动器样式：控制启动器窗口、输入框、列表和颜色变量。 *****/
 /*****----- Configuration -----*****/
 configuration {
     modi:                       "drun,window";

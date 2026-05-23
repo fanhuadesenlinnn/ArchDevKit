@@ -1,3 +1,4 @@
+-- Hyprland Lua 入口：按模块加载启动项、窗口规则、环境变量、外观、输入和快捷键。
 require("modules.autostart")
 require("modules.rules")
 require("modules.env")

@@ -127,3 +127,4 @@ element-text {
     vertical-align:              0.5;
     horizontal-align:            0;
 }
+/***** Rofi 剪贴板列表样式：控制条目宽度、搜索框和选中态。 *****/

@@ -159,3 +159,4 @@ error-message {
     background-color:            @background;
     text-color:                  @foreground;
 }
+/***** Rofi 音乐播放器样式：用于媒体控制菜单。 *****/

@@ -1,3 +1,4 @@
+# Yazi 快捷键扩展：只放插件相关的增量按键，避免覆盖默认键位。
 [[mgr.prepend_keymap]]
 on   = [ "g", "c" ]
 run  = "plugin vcs-files"

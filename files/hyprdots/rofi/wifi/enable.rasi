@@ -108,3 +108,4 @@ element-text {
     vertical-align:              0.5;
     horizontal-align:            0;
 }
+/***** Rofi Wi-Fi 开关样式：用于启用或关闭无线网络。 *****/

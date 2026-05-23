@@ -88,3 +88,4 @@ prompt {
 dummy {
     background-color: 		transparent;
 }
+/***** Rofi Wi-Fi SSID 输入样式：手动输入隐藏网络名称。 *****/

@@ -1,3 +1,5 @@
+// Waybar 旧版状态栏配置：保留给喜欢紧凑布局的用户切换使用。
+// 可通过 ~/.config/waybar/switch_waybar 在新旧配置间切换。
 {
   "layer": "top",
   "position": "top",
@@ -22,6 +24,7 @@
     "network",
     "battery"
   ],
+  // 自定义按钮：切换透明效果、切换壁纸。
   "custom/transparency": {
     "format": "TRAN",
     "tooltip": false,
@@ -33,6 +36,7 @@
     "tooltip": false,
     "on-click-right": "~/.local/bin/archdevkit-terminal -e ~/.config/waybar/scripts/select-wallpaper.sh"
   },
+  // 工作区模块：点击切换，滚轮切换前后工作区。
   "hyprland/workspaces": {
     "on-click": "activate",
     "format": "{icon}",

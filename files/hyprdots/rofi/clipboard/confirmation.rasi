@@ -102,3 +102,4 @@ textbox {
     vertical-align:              0.5;
     horizontal-align:            0.5;
 }
+/***** Rofi 剪贴板确认框样式：用于清空或删除剪贴板条目前的确认。 *****/
