@@ -11,49 +11,49 @@ opacity = 1.0
 
 # Nerd Font 用于显示图标、Powerline 提示符和部分 TUI 符号。
 [font]
-size = 12.0
+size = 12.5
 
 [font.normal]
-family = "IosevkaTerm Nerd Font Mono"
+family = "JetBrainsMono Nerd Font Mono"
 style = "Regular"
 
 [font.bold]
-family = "IosevkaTerm Nerd Font Mono"
+family = "JetBrainsMono Nerd Font Mono"
 style = "Bold"
 
 [font.italic]
-family = "IosevkaTerm Nerd Font Mono"
+family = "JetBrainsMono Nerd Font Mono"
 style = "Italic"
 
 [colors.primary]
-background = "#11111B"
-foreground = "#CDD6F4"
+background = "#232634"
+foreground = "#f0f3ff"
 
-# 以下颜色为 Catppuccin Mocha 风格，影响 ANSI 终端颜色。
+# 以下颜色为 ArchDevKit Clear Mocha 风格，影响 ANSI 终端颜色。
 [colors.cursor]
-text = "#11111B"
-cursor = "#F5E0DC"
+text = "#232634"
+cursor = "#8AADF4"
 
 [colors.selection]
-text = "#11111B"
-background = "#F5E0DC"
+text = "#F0F3FF"
+background = "#4A5068"
 
 [colors.normal]
-black = "#45475A"
-red = "#F38BA8"
-green = "#A6E3A1"
-yellow = "#F9E2AF"
-blue = "#89B4FA"
-magenta = "#F5C2E7"
-cyan = "#94E2D5"
-white = "#BAC2DE"
+black = "#4a5068"
+red = "#e78284"
+green = "#a6d189"
+yellow = "#e5c890"
+blue = "#8aadf4"
+magenta = "#ca9ee6"
+cyan = "#81c8be"
+white = "#c7cce2"
 
 [colors.bright]
-black = "#585B70"
-red = "#F38BA8"
-green = "#A6E3A1"
-yellow = "#F9E2AF"
-blue = "#89B4FA"
-magenta = "#F5C2E7"
-cyan = "#94E2D5"
-white = "#A6ADC8"
+black = "#596079"
+red = "#e78284"
+green = "#a6d189"
+yellow = "#e5c890"
+blue = "#8aadf4"
+magenta = "#ca9ee6"
+cyan = "#81c8be"
+white = "#c7cce2"

@@ -51,8 +51,8 @@ general {
     gaps_out = 10
     border_size = 2
     layout = dwindle
-    col.active_border = rgba(7aa2f7ff)
-    col.inactive_border = rgba(414868ff)
+    col.active_border = rgba(8aadf4ff)
+    col.inactive_border = rgba(4a5068ff)
 }
 
 # 圆角、阴影和模糊效果；性能较弱的机器可关闭 blur/shadow。

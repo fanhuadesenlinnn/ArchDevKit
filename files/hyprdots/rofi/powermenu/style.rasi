@@ -5,12 +5,12 @@ configuration {
 
 /*****----- Global Properties -----*****/
 * {
-    font:                        "Iosevka Nerd Font 10";
-    background: #11111b;
-    foreground: #cdd6f4;
-    selected: #cba6f7;
-    active: #f5e0dc;
-    urgent: #f38ba8;
+    font:                        "JetBrainsMono Nerd Font 11";
+    background: #232634;
+    foreground: #f0f3ff;
+    selected: #8aadf4;
+    active: #eebebe;
+    urgent: #e78284;
 }
 
 /*****----- Main Window -----*****/
@@ -52,8 +52,8 @@ prompt {
     enabled: true;
     padding: 4px;
     border-radius: 4px;
-    background-color: #a6e3a1;
-    text-color: #313244;
+    background-color: #a6d189;
+    text-color: #34384a;
 }
 
 /*****----- Listview -----*****/
@@ -80,17 +80,17 @@ element {
     padding: 10px;
     border-radius: 2px;
     background-color: @background;
-    text-color: #cdd6f4;
+    text-color: #f0f3ff;
     cursor: pointer;
 }
 
 element selected.normal {
-    background-color: #cba6f7;
-    text-color: #1e1e2e;
+    background-color: #8aadf4;
+    text-color: #292c3c;
 }
 
 element-text {
-    font: "Iosevka Nerd Font 10";
+    font: "JetBrainsMono Nerd Font 11";
     background-color: transparent;
     text-color: inherit;
     cursor: inherit;
@@ -102,8 +102,8 @@ message {
     margin: 2px;
     padding: 4px;
     border-radius: 2px;
-    background-color: #f5e0dc;
-    text-color: #1e1e2e;
+    background-color: #eebebe;
+    text-color: #292c3c;
 }
 
 textbox {

@@ -5,11 +5,11 @@ configuration {
 
 /*****----- Global Properties -----*****/
 * {
-    font: "Iosevka Nerd Font 10";
-    background:                  #11111b;
-    selected:                    #cba6f7;
-    active:                      #716251;
-    urgent:                      #934A1C;
+    font: "JetBrainsMono Nerd Font 11";
+    background:                  #232634;
+    selected:                    #8aadf4;
+    active:                      #a6d189;
+    urgent:                      #ef9f76;
 }
 
 /*
@@ -72,8 +72,8 @@ element {
     enabled:                     true;
     padding:                     17px;
     border-radius:               16px;
-    background-color:            #585b70;
-    text-color:                  #eff1f5;
+    background-color:            #596079;
+    text-color:                  #f0f3ff;
     cursor:                      pointer;
 }
 element-text {
@@ -85,7 +85,7 @@ element-text {
     horizontal-align:            0.5;
 }
 element selected.normal {
-    background-color:            #8839ef;
+    background-color:            #8aadf4;
 }
 
 /*****----- Message -----*****/
@@ -94,11 +94,11 @@ message {
     margin:      		 0px 25px;
     padding:                     10px 20px;
     border-radius: 		 0% 0% 100% 100%;
-    background-color: 		 #f5c2e7;
+    background-color: 		 #ca9ee6;
 }
 textbox {
     background-color:            transparent;
-    text-color:                  #313244;
+    text-color:                  #34384a;
     vertical-align:              0.5;
     horizontal-align:            0.5;
 }

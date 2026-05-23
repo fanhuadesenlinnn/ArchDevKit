@@ -5,12 +5,12 @@ configuration {
 
 /*****----- Global Properties -----*****/
 * {
-    font: "Iosevka Nerd Font 12";
-    background: #11111b;
-    foreground: #cdd6f4;
-    selected: #cba6f7;
-    active: #f5e0dc;
-    urgent: #f38ba8;
+    font: "JetBrainsMono Nerd Font 12";
+    background: #232634;
+    foreground: #f0f3ff;
+    selected: #8aadf4;
+    active: #eebebe;
+    urgent: #e78284;
 }
 
 /*
@@ -73,12 +73,12 @@ element {
     enabled: true;
     padding: 10px;
     border-radius: 4px;
-    background-color: #313244;
+    background-color: #34384a;
     cursor: pointer;
 }
 
 element-text {
-    font: "Iosevka Nerd Font 12";
+    font: "JetBrainsMono Nerd Font 12";
     background-color: transparent;
     text-color: inherit;
     cursor: inherit;
@@ -87,7 +87,7 @@ element-text {
 }
 
 element selected.normal {
-    background-color: #cba6f7;
-    text-color: #11111b;
+    background-color: #8aadf4;
+    text-color: #232634;
 }
 /***** Rofi 电源操作确认框样式：避免误触关机/重启等危险操作。 *****/

@@ -16,13 +16,13 @@ configuration {
 
 /*****----- Global Properties -----*****/
 * {
-    font:                        "Iosevka Nerd Font 10";
-    background:                  #11111b;
-    background-alt:              #313244;
-    foreground:                  #eff1f5;
-    selected:                    #cba6f7;
-    active:                      #6E77FF;
-    urgent:                      #8E3596;
+    font:                        "JetBrainsMono Nerd Font 11";
+    background:                  #232634;
+    background-alt:              #34384a;
+    foreground:                  #f0f3ff;
+    selected:                    #8aadf4;
+    active:                      #91d7e3;
+    urgent:                      #e78284;
 }
 
 /*****----- Main Window -----*****/
@@ -76,7 +76,7 @@ textbox-prompt-colon {
     str:                         "Apps";
     padding:                     10px 18px 10px 15px;
     border-radius:               6px;
-    background-color:           #b4befe;
+    background-color:           #8aadf4;
     text-color:                  @background;
 }
 entry {
@@ -147,8 +147,8 @@ element {
     cursor:                      pointer;
 }
 element selected.normal {
-    font:                        "Iosevka Nerd Font 8";
-    background-color:           #b4befe;
+    font:                        "JetBrainsMono Nerd Font 10";
+    background-color:           #8aadf4;
     text-color:                  @background;
 }
 element-icon {

@@ -3,8 +3,8 @@
 [global]
     monitor = 0
     follow = none
-    width = 300
-    height = 130
+    width = 340
+    height = 150
     origin = top-center
     alignment = "left"
     vertical_alignment = "center"
@@ -25,19 +25,19 @@
     progress_bar_max_width = 300
     separator_height = 2
     frame_width = 1
-    frame_color = "#45475a"
-    separator_color = "#45475a"
+    frame_color = "#4a5068"
+    separator_color = "#4a5068"
     corner_radius = 8
-    transparency = 0.5
+    transparency = 0
     gap_size = 8
-    line_height = 0
+    line_height = 2
     notification_limit = 0
     idle_threshold = 120
     history_length = 20
     show_age_threshold = 60
     markup = "full"
-    font = "Iosevka Nerd Font 10";
-    format = "<b>%s</b>\n%b:
+    font = "Noto Sans CJK SC 11"
+    format = "<b>%s</b>\n%b"
     word_wrap = "yes"
     sort = "yes"
     shrink = "no"
@@ -59,19 +59,19 @@
 
 
 [urgency_low]
-    background = "#11111b"
-    foreground = "#cdd6f4"
-    highlight = "#cba6f7"
+    background = "#232634"
+    foreground = "#f0f3ff"
+    highlight = "#8aadf4"
     timeout = 4
 
 [urgency_normal]
-    background = "#11111b"
-    foreground = "#cdd6f4"
-    highlight = "#cba6f7"
+    background = "#232634"
+    foreground = "#f0f3ff"
+    highlight = "#8aadf4"
     timeout = 6
 
 [urgency_critical]
-    background = "#11111b"
-    foreground = "#cdd6f4"
-    highlight = "#cba6f7"
+    background = "#232634"
+    foreground = "#f0f3ff"
+    highlight = "#8aadf4"
     timeout = 0

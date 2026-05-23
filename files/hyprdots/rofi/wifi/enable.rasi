@@ -5,13 +5,13 @@ configuration {
 
 /*****----- Global Properties -----*****/
 * {
-    font:                        "Iosevka Nerd Font 10";
-    background:                  #11111b;
-    background-alt:              #313244;
-    foreground:                  #eff1f5;
-    selected:                    #cba6f7;
-    active:                      #6E77FF;
-    urgent:                      #8E3596;
+    font:                        "JetBrainsMono Nerd Font 11";
+    background:                  #232634;
+    background-alt:              #34384a;
+    foreground:                  #f0f3ff;
+    selected:                    #8aadf4;
+    active:                      #91d7e3;
+    urgent:                      #e78284;
 }
 
 /*****----- Main Window -----*****/
@@ -57,7 +57,7 @@ textbox-prompt-colon {
     str:                         "";
     padding:                     12px 24px 12px 14px;
     border-radius:               100%;
-    background-color:            #a6e3a1;
+    background-color:            #a6d189;
     text-color:                  @background;
 }
 
@@ -75,7 +75,7 @@ listview {
     spacing:                     0px;
     margin: 			 28px 24px;
     border-radius: 		 8px;
-    background-color:            #1e1e2e;
+    background-color:            #292c3c;
     text-color:                  @foreground;
     cursor:                      "default";
 }
