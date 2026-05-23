@@ -26,34 +26,34 @@ family = "JetBrainsMono Nerd Font Mono"
 style = "Italic"
 
 [colors.primary]
-background = "#232634"
-foreground = "#f0f3ff"
+background = "#1C1C1C"
+foreground = "#F8F8F2"
 
-# 以下颜色为 ArchDevKit Clear Mocha 风格，影响 ANSI 终端颜色。
+# 以下颜色为 ArchDevKit i3 Clear 风格，影响 ANSI 终端颜色。
 [colors.cursor]
-text = "#232634"
-cursor = "#8AADF4"
+text = "#1C1C1C"
+cursor = "#81A2BE"
 
 [colors.selection]
-text = "#F0F3FF"
-background = "#4A5068"
+text = "#F8F8F2"
+background = "#44475A"
 
 [colors.normal]
-black = "#4a5068"
-red = "#e78284"
-green = "#a6d189"
-yellow = "#e5c890"
-blue = "#8aadf4"
-magenta = "#ca9ee6"
-cyan = "#81c8be"
-white = "#c7cce2"
+black = "#282A36"
+red = "#FF5555"
+green = "#50FA7B"
+yellow = "#F1FA8C"
+blue = "#81A2BE"
+magenta = "#BB86FC"
+cyan = "#57C7FF"
+white = "#C5C8C6"
 
 [colors.bright]
-black = "#596079"
-red = "#e78284"
-green = "#a6d189"
-yellow = "#e5c890"
-blue = "#8aadf4"
-magenta = "#ca9ee6"
-cyan = "#81c8be"
-white = "#c7cce2"
+black = "#44475A"
+red = "#FF6E6E"
+green = "#69FF94"
+yellow = "#FFFFA5"
+blue = "#9CC4E4"
+magenta = "#D6ACFF"
+cyan = "#8BE9FD"
+white = "#F8F8F2"
