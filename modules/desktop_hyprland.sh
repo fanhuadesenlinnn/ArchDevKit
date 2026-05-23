@@ -25,6 +25,7 @@ install_desktop_hyprland() {
   configure_rime_if_needed
   generate_hyprland_config
   configure_hyprland_gpu_env
+  configure_hyprland_vmware_env
   enable_sddm_if_needed
   verify_hyprland
 
@@ -310,7 +311,7 @@ install_gpu_packages_if_needed() {
       pacman_install vulkan-intel intel-media-driver vulkan-icd-loader
       ;;
     vmware)
-      log_warn "检测到 VMware 虚拟显卡；安装 VMware 工具和软件渲染栈以避免 Hyprland EGL 初始化失败"
+      log_warn "检测到 VMware 虚拟显卡；安装 VMware Tools、Mesa 检测工具和软件渲染兜底"
       pacman_install open-vm-tools vulkan-swrast mesa-utils
       ;;
     virtio|qxl)
@@ -332,6 +333,23 @@ enable_desktop_services() {
 
   if [[ "${ENABLE_BLUETOOTH:-0}" -eq 1 ]]; then
     run_sudo systemctl enable --now bluetooth || log_warn "蓝牙服务启用失败，可稍后手动处理"
+  fi
+
+  enable_vmware_services_if_needed
+}
+
+enable_vmware_services_if_needed() {
+  [[ "$(effective_gpu_type)" == "vmware" ]] || return 0
+
+  log_info "启用 VMware Tools 服务"
+  if systemd_system_unit_exists vmtoolsd.service; then
+    run_sudo systemctl enable --now vmtoolsd.service || \
+      log_warn "vmtoolsd.service 启用失败，可稍后手动处理"
+  fi
+
+  if systemd_system_unit_exists vmware-vmblock-fuse.service; then
+    run_sudo systemctl enable --now vmware-vmblock-fuse.service || \
+      log_warn "vmware-vmblock-fuse.service 启用失败，可稍后手动处理"
   fi
 }
 
@@ -377,9 +395,41 @@ configure_rime_if_needed() {
   configure_fcitx5_rime_profile
 }
 
+vmware_3d_acceleration_available() {
+  [[ "$(effective_gpu_type)" == "vmware" ]] || return 1
+  [[ "${VMWARE_FORCE_SOFTWARE_RENDERER:-0}" -eq 1 ]] && return 1
+
+  local render_nodes=()
+  shopt -s nullglob
+  render_nodes=(/dev/dri/renderD*)
+  shopt -u nullglob
+  [[ "${#render_nodes[@]}" -gt 0 ]] || return 1
+
+  if command -v eglinfo >/dev/null 2>&1; then
+    local egl_output
+    egl_output="$(
+      env \
+        -u LIBGL_ALWAYS_SOFTWARE \
+        -u MESA_LOADER_DRIVER_OVERRIDE \
+        -u GALLIUM_DRIVER \
+        eglinfo -B 2>/dev/null || true
+    )"
+
+    if grep -Eq 'OpenGL.*renderer: SVGA3D|OpenGL renderer string: SVGA3D|OpenGL.*vendor: VMware, Inc\.' <<<"${egl_output}"; then
+      return 0
+    fi
+  fi
+
+  return 1
+}
+
 hyprland_needs_software_renderer() {
   case "$(effective_gpu_type)" in
-    vmware|virtio|qxl) return 0 ;;
+    vmware)
+      vmware_3d_acceleration_available && return 1
+      return 0
+      ;;
+    virtio|qxl) return 0 ;;
     *) return 1 ;;
   esac
 }
@@ -411,12 +461,13 @@ configure_hyprland_gpu_env() {
 
   if hyprland_needs_software_renderer; then
     local with_env
+    log_warn "未检测到可用的硬件 EGL 渲染器；为 ${gpu} 写入 Hyprland llvmpipe 兜底"
     with_env="$(mktemp)"
     {
       cat <<EOF
 ### ArchDevKit VM EGL fix ###
-# ${gpu} virtual GPU can fail EGL initialization on Hyprland; keep this scoped
-# to virtual GPUs so physical Intel/AMD/NVIDIA installs use hardware rendering.
+# ${gpu} virtual GPU can fail EGL initialization without a usable 3D renderer.
+# Remove this block automatically when VMware SVGA3D is detected.
 env = LIBGL_ALWAYS_SOFTWARE,1
 env = MESA_LOADER_DRIVER_OVERRIDE,llvmpipe
 env = GALLIUM_DRIVER,llvmpipe
@@ -427,6 +478,47 @@ EOF
       cat "${tmp_file}"
     } > "${with_env}"
     mv "${with_env}" "${tmp_file}"
+  elif [[ "${gpu}" == "vmware" ]]; then
+    log_info "检测到 VMware SVGA3D 硬件渲染；清理 Hyprland llvmpipe 兜底环境"
+  fi
+
+  install -m 0644 "${tmp_file}" "${hypr_conf}"
+  rm -f "${tmp_file}"
+}
+
+configure_hyprland_vmware_env() {
+  local hypr_conf="${HOME}/.config/hypr/hyprland.conf"
+  local mode="${VMWARE_HYPRLAND_MONITOR_MODE:-1920x1080@60}"
+  local tmp_file
+
+  [[ -f "${hypr_conf}" ]] || return 0
+  [[ "$(effective_gpu_type)" == "vmware" ]] || return 0
+
+  if [[ "${DRY_RUN:-0}" -eq 1 ]]; then
+    echo "+ set VMware Hyprland monitor fallback ${mode} in ${hypr_conf}"
+    echo "+ enable vmware-user-suid-wrapper autostart in ${hypr_conf}"
+    return 0
+  fi
+
+  tmp_file="$(mktemp)"
+  sed \
+    -e '/^exec-once = vmware-user-suid-wrapper$/d' \
+    -e 's/^monitor[[:space:]]*=[[:space:]]*,preferred,auto,auto[[:space:]]*$/monitor=Virtual-1,'"${mode}"',auto,1/' \
+    -e 's/^monitor[[:space:]]*=[[:space:]]*Virtual-1,.*/monitor=Virtual-1,'"${mode}"',auto,1/' \
+    "${hypr_conf}" > "${tmp_file}"
+
+  if ! grep -Eq '^monitor[[:space:]]*=[[:space:]]*Virtual-1,' "${tmp_file}"; then
+    local with_monitor
+    with_monitor="$(mktemp)"
+    {
+      printf 'monitor=Virtual-1,%s,auto,1\n' "${mode}"
+      cat "${tmp_file}"
+    } > "${with_monitor}"
+    mv "${with_monitor}" "${tmp_file}"
+  fi
+
+  if ! grep -Fxq 'exec-once = vmware-user-suid-wrapper' "${tmp_file}"; then
+    printf '\nexec-once = vmware-user-suid-wrapper\n' >> "${tmp_file}"
   fi
 
   install -m 0644 "${tmp_file}" "${hypr_conf}"

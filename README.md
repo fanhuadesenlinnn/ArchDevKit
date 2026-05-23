@@ -151,7 +151,9 @@ Hyprland 桌面默认安装 Google Chrome，不安装 Firefox。默认浏览器�
 
 `--no-sddm` 会同时跳过 SDDM 包安装和服务启用；`ENABLE_BLUETOOTH=0` 会跳过蓝牙相关包和服务启用。
 
-GPU 默认使用 `GPU_TYPE=auto` 根据 `lspci` 自动识别。物理机上会按 Intel、AMD、NVIDIA 安装对应 Wayland/Vulkan/媒体驱动；VMware、virtio、QXL 虚拟显卡会安装软件渲染兜底，并只在生成的 Hyprland 配置里为虚拟显卡写入 llvmpipe 环境，避免影响后续物理机硬件渲染。
+GPU 默认使用 `GPU_TYPE=auto` 根据 `lspci` 自动识别。物理机上会按 Intel、AMD、NVIDIA 安装对应 Wayland/Vulkan/媒体驱动；virtio、QXL 虚拟显卡会安装软件渲染兜底，并只在生成的 Hyprland 配置里为虚拟显卡写入 llvmpipe 环境，避免影响后续物理机硬件渲染。
+
+VMware 虚拟机建议在虚拟机设置中启用 3D 图形加速。脚本会安装 `open-vm-tools`、启用 `vmtoolsd.service` / `vmware-vmblock-fuse.service`，并写入 `Virtual-1` 的 1080p fallback 和 `vmware-user-suid-wrapper` 自启动。检测到 Mesa `SVGA3D` 时会清理旧的 llvmpipe 环境，让 Hyprland 和 Chrome 使用 `/dev/dri/renderD*`；检测不到 3D 渲染器时才写入 llvmpipe 兜底。特殊情况下可设置 `VMWARE_FORCE_SOFTWARE_RENDERER=1` 强制使用软件渲染。
 
 中文输入法默认使用 Fcitx5 + Rime，默认方案为 `luna_pinyin_simp`。Rime 配置默认从独立仓库拉取并安装到 `~/.local/share/fcitx5/rime`：
 
