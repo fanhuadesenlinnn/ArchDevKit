@@ -1,3 +1,4 @@
+-- 横向动画模块：定义窗口、淡入淡出、图层和工作区动画曲线。
 -- Main motion curve
 hl.curve("motion", {
 	type = "bezier",

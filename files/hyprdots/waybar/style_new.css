@@ -1,3 +1,4 @@
+/* Waybar 新版样式：配合 config_new.jsonc，采用 Catppuccin Mocha 配色。 */
 @import 'mocha.css';
 
 * {
@@ -17,6 +18,7 @@
 .modules-right {}
 
 #workspaces {
+  /* 工作区区域：当前工作区通过下划线高亮。 */
   border-radius: 0px;
   /* background: @blue; */
   margin-right: 10px;

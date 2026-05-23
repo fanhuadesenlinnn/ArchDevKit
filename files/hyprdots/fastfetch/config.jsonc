@@ -1,3 +1,5 @@
+// Fastfetch 主配置：控制终端启动时显示的系统信息、Logo 和颜色。
+// modules 数组决定显示哪些信息块；注释掉的模块可按需恢复。
 {
   "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json",
   "logo": {

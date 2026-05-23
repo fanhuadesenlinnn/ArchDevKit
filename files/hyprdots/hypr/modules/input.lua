@@ -1,3 +1,4 @@
+-- 输入模块：键盘布局、鼠标灵敏度、触控板自然滚动和 XWayland 缩放。
 hl.config({
 	input = {
 		kb_layout = "us",

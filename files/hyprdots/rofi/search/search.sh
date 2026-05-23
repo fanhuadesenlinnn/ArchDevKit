@@ -22,8 +22,8 @@ if [[ "$SEARCH_STRING" == cd* ]]; then
         DIR_PATH="$HOME"
     fi
 
-    # Open Kitty and navigate to the specified directory
-    kitty --directory="$DIR_PATH" &
+    # Open the configured terminal and navigate to the specified directory
+    "${TERMINAL:-$HOME/.local/bin/archdevkit-terminal}" --working-directory "$DIR_PATH" &
     exit
 fi
 
@@ -57,13 +57,13 @@ case "$ENGINE" in
         exit
         ;;
     man)
-        # If the engine is 'man', open the manual page for the command in Kitty
+        # If the engine is 'man', open the manual page for the command in the configured terminal
         MAN_COMMAND=$(echo "$QUERY" | sed 's/^ *//g')  # Trim leading whitespace
         if [[ -z "$MAN_COMMAND" ]]; then
             echo "No command specified for man. Please provide a command."
             exit 1
         else
-            kitty -e man "$MAN_COMMAND" &  # Open the man page in Kitty
+            "${TERMINAL:-$HOME/.local/bin/archdevkit-terminal}" -e man "$MAN_COMMAND" &
             exit
         fi
         ;;

@@ -1,3 +1,5 @@
+// Waybar 旧版状态栏配置：保留给喜欢紧凑布局的用户切换使用。
+// 可通过 ~/.config/waybar/switch_waybar 在新旧配置间切换。
 {
   "layer": "top",
   "position": "top",
@@ -22,6 +24,7 @@
     "network",
     "battery"
   ],
+  // 自定义按钮：切换透明效果、切换壁纸。
   "custom/transparency": {
     "format": "TRAN",
     "tooltip": false,
@@ -31,8 +34,9 @@
     "format": "WALL",
     "on-click": "~/.config/waybar/scripts/change-wallpaper.sh",
     "tooltip": false,
-    "on-click-right": "kitty -e ~/.config/waybar/scripts/select-wallpaper.sh"
+    "on-click-right": "~/.local/bin/archdevkit-terminal -e ~/.config/waybar/scripts/select-wallpaper.sh"
   },
+  // 工作区模块：点击切换，滚轮切换前后工作区。
   "hyprland/workspaces": {
     "on-click": "activate",
     "format": "{icon}",
@@ -45,12 +49,12 @@
   "cpu": {
     "interval": 1,
     "format": "CPU {usage}%",
-    "on-click": "kitty -e btop"
+    "on-click": "~/.local/bin/archdevkit-terminal -e btop"
   },
   "memory": {
     "interval": 1,
     "format": "MEM {percentage}%",
-    "on-click": "kitty -e btop",
+    "on-click": "~/.local/bin/archdevkit-terminal -e btop",
     "tooltip-format": "{used}/{total} GiB"
   },
   "network#speed": {
@@ -87,7 +91,7 @@
     "tooltip-format-wifi": "Down {bandwidthDownBytes} | Up {bandwidthUpBytes} | {essid}",
     "tooltip-format-disconnected": "Disconnected",
     "on-click": "~/.config/rofi/wifi/wifi.sh",
-    "on-click-right": "kitty -e nmtui"
+    "on-click-right": "~/.local/bin/archdevkit-terminal -e nmtui"
   },
   "battery": {
     "format": "BAT {capacity}%",

@@ -75,3 +75,4 @@ element-text {
     padding:                     0px;
     font:                        "JetBrains Mono Nerd Font 0";
 }
+/***** Rofi 壁纸选择器样式：控制壁纸缩略图列表和选中态。 *****/

@@ -13,5 +13,7 @@ Local adjustments:
 - The upstream Hyprland config used an optional `scrolling` layout. ArchDevKit
   defaults it to `dwindle` so a stock Hyprland install can start without extra
   layout plugins.
+- Terminal integration is normalized to Alacritty with foot as the fallback;
+  Kitty-specific config from upstream is intentionally not vendored.
 - `waybar/scripts/toggle-brightness.sh` stores state under
   `${XDG_STATE_HOME:-$HOME/.local/state}` instead of `/etc/xdg`.

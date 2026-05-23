@@ -1,4 +1,5 @@
 -- modules/binds.lua
+-- 快捷键模块：集中维护应用启动、截图、音量亮度、窗口控制和工作区切换。
 local vars = require("modules.variables")
 
 local mod = "SUPER"

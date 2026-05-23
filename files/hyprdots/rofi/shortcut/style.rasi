@@ -182,3 +182,4 @@ error-message {
     background-color:            @background;
     text-color:                  @foreground;
 }
+/***** Rofi 快捷键提示样式：用于展示桌面快捷键速查。 *****/

@@ -1,3 +1,4 @@
+-- 纵向动画模块：可在 hyprland.lua 中切换启用，用于另一套窗口/工作区动画。
 hl.config({
 	animations = {
 		enabled = true, -- Disables all animations globally

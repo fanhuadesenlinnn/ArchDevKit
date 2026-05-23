@@ -2,12 +2,16 @@
 # 没有壁纸时不会启动 hyprpaper。
 
 $mod = SUPER
+# ArchDevKit 会把下面这些占位符替换为 install_vars 中选择的软件。
+# 常改项：$terminal 终端、$fileManager 文件管理器、$menu 应用启动器。
 $terminal = __TERMINAL_APP__
 $fileManager = __FILE_MANAGER__
 $menu = __APP_LAUNCHER__ --show drun
 
+# 显示器使用自动模式：优先采用屏幕推荐分辨率、自动排列、1 倍缩放。
 monitor = ,preferred,auto,1
 
+# Wayland/XWayland/输入法环境变量。fcitx5 相关变量用于中文输入法。
 env = XCURSOR_SIZE,24
 env = QT_QPA_PLATFORM,wayland;xcb
 env = QT_WAYLAND_DISABLE_WINDOWDECORATION,1
@@ -20,6 +24,7 @@ env = INPUT_METHOD,fcitx
 env = SDL_IM_MODULE,fcitx
 env = GLFW_IM_MODULE,ibus
 
+# 桌面启动项：状态栏、通知、输入法、网络/蓝牙托盘和提权认证代理。
 exec-once = waybar
 exec-once = mako
 exec-once = fcitx5
@@ -27,6 +32,7 @@ exec-once = nm-applet --indicator
 exec-once = blueman-applet
 exec-once = /usr/lib/polkit-kde-authentication-agent-1
 
+# 键盘、鼠标和触控板行为。
 input {
     kb_layout = us
     follow_mouse = 1
@@ -39,6 +45,7 @@ input {
     }
 }
 
+# 窗口间距、边框和默认布局。
 general {
     gaps_in = 5
     gaps_out = 10
@@ -48,6 +55,7 @@ general {
     col.inactive_border = rgba(414868ff)
 }
 
+# 圆角、阴影和模糊效果；性能较弱的机器可关闭 blur/shadow。
 decoration {
     rounding = 10
     shadow {
@@ -64,6 +72,7 @@ decoration {
     }
 }
 
+# 动画速度与曲线。
 animations {
     enabled = true
     bezier = easeOut, 0.16, 1, 0.3, 1
@@ -87,6 +96,7 @@ debug {
     vfr = true
 }
 
+# 基础快捷键：SUPER+Return/T 打开终端，SUPER+Space 打开启动器。
 bind = $mod, Return, exec, $terminal
 bind = $mod, T, exec, $terminal
 bind = $mod, Space, exec, $menu

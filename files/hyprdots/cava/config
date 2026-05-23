@@ -1,3 +1,5 @@
+## CAVA 音频可视化配置：用于终端/Waybar 音频频谱效果。
+## 取消参数前面的 ; 可覆盖默认值，常改项是 input、bars、colors 和 output。
 ## Configuration file for CAVA.
 # Remove the ; to change parameters.
 

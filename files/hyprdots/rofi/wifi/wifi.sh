@@ -6,7 +6,7 @@ LIST_THEME="$HOME/.config/rofi/wifi/list.rasi"
 ENABLE_THEME="$HOME/.config/rofi/wifi/enable.rasi"
 SSID_THEME="$HOME/.config/rofi/wifi/ssid.rasi"
 PASSWORD_THEME="$HOME/.config/rofi/wifi/password.rasi"
-TERMINAL="${TERMINAL:-kitty}"
+TERMINAL="${TERMINAL:-${HOME}/.local/bin/archdevkit-terminal}"
 
 notify-send -t 3000 -i info "Wi-Fi" "Checking networks..." || true
 

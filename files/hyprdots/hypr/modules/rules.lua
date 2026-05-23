@@ -1,3 +1,4 @@
+-- 窗口规则模块：按应用 class 自动分配工作区。
 local function windowRule(class, workspace, silent)
 	if silent == nil then
 		silent = false
@@ -18,8 +19,8 @@ windowRule("google-chrome", "1", true)
 windowRule("firefox", "1")
 
 -- Workspace 2: Terminals
-windowRule("kitty", "2")
-windowRule("com.mitchellh.ghostty", "2")
+windowRule("Alacritty", "2")
+windowRule("foot", "2")
 
 -- Workspace 3: Productivity & Dev
 windowRule("obsidian", "3")

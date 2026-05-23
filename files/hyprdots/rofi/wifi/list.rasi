@@ -123,3 +123,4 @@ element-text {
     vertical-align:              0.5;
     horizontal-align:            0;
 }
+/***** Rofi Wi-Fi 列表样式：展示可用无线网络并选择连接目标。 *****/

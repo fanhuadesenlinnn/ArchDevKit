@@ -78,3 +78,4 @@ textbox-prompt-colon {
     background-color:            #a6e3a1;
     text-color:                  @background;
 }
+/***** Rofi 搜索样式：用于自定义搜索入口。 *****/

@@ -1,3 +1,5 @@
+// Waybar 新版状态栏配置：定义模块顺序、点击动作和刷新频率。
+// 左侧偏系统监控，中间时钟，右侧壁纸/透明度/亮度/音量/网络/电池/托盘。
 {
   "reload_style_on_change": true,
   "layer": "top",
@@ -32,6 +34,7 @@
     "battery",
     "tray"
   ],
+  // Hyprland 子模式提示，点击可退出当前 submap。
   "hyprland/submap": {
     "format": "SUB {}",
     "max-length": 20,
@@ -63,6 +66,7 @@
     "tooltip": true,
     "tooltip-format": "{volume}% | {desc}"
   },
+  // 网络模块：左键打开 Rofi Wi-Fi 菜单，右键用终端打开 nmtui。
   "network": {
     "format-wifi": "WIFI {essid}",
     "format-ethernet": "ETH",
@@ -71,7 +75,7 @@
     "tooltip-format-wifi": "Down {bandwidthDownBytes} | Up {bandwidthUpBytes} | {essid}",
     "tooltip-format-disconnected": "Disconnected",
     "on-click": "~/.config/rofi/wifi/wifi.sh",
-    "on-click-right": "kitty -e nmtui"
+    "on-click-right": "~/.local/bin/archdevkit-terminal -e nmtui"
   },
   "network#speed": {
     "interval": 1,
@@ -86,22 +90,23 @@
     "max-length": 28,
     "min-length": 18
   },
+  // CPU/内存模块：点击进入 btop 任务管理器。
   "cpu": {
     "interval": 1,
     "format": "<span color='#89b4fa'>CPU</span> {usage}%",
-    "on-click": "kitty -e btop"
+    "on-click": "~/.local/bin/archdevkit-terminal -e btop"
   },
   "memory": {
     "interval": 1,
     "format": "<span color='#89b4fa'>MEM</span> {percentage}%",
-    "on-click": "kitty -e btop",
+    "on-click": "~/.local/bin/archdevkit-terminal -e btop",
     "tooltip-format": "{used}/{total} GiB"
   },
   "custom/wallpaper": {
     "format": "WALL",
     "on-click": "~/.config/waybar/scripts/change-wallpaper.sh",
     "tooltip": false,
-    "on-click-right": "kitty -e ~/.config/waybar/scripts/select-wallpaper.sh"
+    "on-click-right": "~/.local/bin/archdevkit-terminal -e ~/.config/waybar/scripts/select-wallpaper.sh"
   },
   "custom/gh": {
     "exec": "sleep 1 && ~/.config/waybar/scripts/weekly_commits dark",

@@ -178,3 +178,4 @@ error-message {
     background-color:            @background;
     text-color:                  @foreground;
 }
+/***** Rofi 剪贴板菜单样式：配合 cliphist 显示历史剪贴板条目。 *****/

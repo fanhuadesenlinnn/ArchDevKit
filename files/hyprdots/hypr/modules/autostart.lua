@@ -1,3 +1,4 @@
+-- 自动启动模块：Hyprland 启动时拉起壁纸、状态栏、剪贴板、输入法和常用应用。
 local vars = require("modules.variables")
 
 local function exec_once(cmd)
