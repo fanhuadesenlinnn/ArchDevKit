@@ -1,7 +1,0 @@
-# Keep proprietary or user-supplied font files local.
-# Example: files/fonts/Monaco_Linux.ttf
-*.ttf
-*.otf
-*.ttc
-!.gitignore
-!README.md
