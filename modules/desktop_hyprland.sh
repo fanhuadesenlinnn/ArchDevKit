@@ -25,6 +25,7 @@ install_desktop_hyprland() {
   configure_fcitx5_env
   configure_rime_if_needed
   generate_hyprland_config
+  backup_legacy_terminal_configs
   configure_hyprland_gpu_env
   configure_hyprland_virtualization_env
   enable_sddm_if_needed
@@ -150,7 +151,7 @@ desktop_hyprdots_packages() {
     hyprpicker
     hyprpolkitagent
     jq
-    kitty
+    alacritty
     libnotify
     mesa
     networkmanager
@@ -212,7 +213,7 @@ desktop_template_packages() {
     qt6-wayland
     waybar
     wofi
-    kitty
+    alacritty
     foot
     thunar
     thunar-archive-plugin
@@ -380,12 +381,10 @@ try_terminal() {
   return 1
 }
 
-try_terminal foot "$@"
-try_terminal kitty "$@"
 try_terminal alacritty "$@"
-try_terminal xterm "$@"
+try_terminal foot "$@"
 
-notify-send "Terminal unavailable" "Install kitty or foot." 2>/dev/null || true
+notify-send "Terminal unavailable" "Install alacritty or foot." 2>/dev/null || true
 exit 127
 EOF
   chmod +x "${helper}"
@@ -762,7 +761,7 @@ render_hyprland_template() {
   [[ -n "${target}" ]] || die "Hyprland 模板目标为空"
 
   browser_app="$(sed_escape_replacement "${BROWSER_APP:-google-chrome-stable}")"
-  terminal_app="$(sed_escape_replacement "${TERMINAL_APP:-kitty}")"
+  terminal_app="$(sed_escape_replacement "${TERMINAL_APP:-alacritty}")"
   file_manager="$(sed_escape_replacement "${FILE_MANAGER:-yazi}")"
   app_launcher="$(sed_escape_replacement "${APP_LAUNCHER:-rofi}")"
 
@@ -793,7 +792,7 @@ install_hyprland_templates() {
   render_hyprland_template "${template_dir}/waybar.style.css.tpl" "${HOME}/.config/waybar/style.css"
   render_hyprland_template "${template_dir}/mako.config.tpl" "${HOME}/.config/mako/config"
   render_hyprland_template "${template_dir}/wofi.config.tpl" "${HOME}/.config/wofi/config"
-  render_hyprland_template "${template_dir}/kitty.conf.tpl" "${HOME}/.config/kitty/kitty.conf"
+  render_hyprland_template "${template_dir}/alacritty.toml.tpl" "${HOME}/.config/alacritty/alacritty.toml"
 }
 
 generate_hyprland_config() {
@@ -878,6 +877,20 @@ disable_hyprland_lua_entrypoint() {
   mv "${lua_entry}" "${disabled_entry}"
 }
 
+backup_legacy_terminal_configs() {
+  local kitty_config="${HOME}/.config/kitty"
+
+  [[ -e "${kitty_config}" || -L "${kitty_config}" ]] || return 0
+
+  log_warn "检测到旧版 Kitty 配置，已切换到 Alacritty/foot，将备份并停用：${kitty_config}"
+  if [[ "${DRY_RUN:-0}" -eq 1 ]]; then
+    echo "+ backup ${kitty_config}"
+    return 0
+  fi
+
+  backup_path "${kitty_config}"
+}
+
 make_hyprdots_scripts_executable() {
   local target="$1"
   [[ -d "${target}" ]] || return 0
@@ -948,7 +961,7 @@ apply_hyprdots_runtime_overrides() {
     return 0
   }
 
-  terminal="$(sed_escape_replacement "${TERMINAL_APP:-kitty}")"
+  terminal="$(sed_escape_replacement "${TERMINAL_APP:-alacritty}")"
   file_manager="$(sed_escape_replacement "${FILE_MANAGER:-yazi}")"
   menu="$(sed_escape_replacement "$(hyprdots_menu_command)")"
   browser="$(sed_escape_replacement "${BROWSER_APP:-google-chrome-stable}")"
@@ -1119,6 +1132,8 @@ verify_hyprland() {
   run_cmd rofi -version || true
   run_cmd dunst --version || true
   run_cmd yazi --version || true
+  run_cmd alacritty --version || true
+  run_cmd foot --version || true
   run_cmd "${BROWSER_APP:-google-chrome-stable}" --version || true
   if [[ "${ENABLE_FCITX5:-0}" -eq 1 ]]; then
     run_cmd fcitx5 --version || true

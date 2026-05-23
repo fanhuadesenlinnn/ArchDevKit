@@ -1,0 +1,54 @@
+[env]
+TERM = "xterm-256color"
+
+[window]
+padding = { x = 10, y = 10 }
+decorations = "None"
+opacity = 1.0
+
+[font]
+size = 12.0
+
+[font.normal]
+family = "IosevkaTerm Nerd Font Mono"
+style = "Regular"
+
+[font.bold]
+family = "IosevkaTerm Nerd Font Mono"
+style = "Bold"
+
+[font.italic]
+family = "IosevkaTerm Nerd Font Mono"
+style = "Italic"
+
+[colors.primary]
+background = "#11111B"
+foreground = "#CDD6F4"
+
+[colors.cursor]
+text = "#11111B"
+cursor = "#F5E0DC"
+
+[colors.selection]
+text = "#11111B"
+background = "#F5E0DC"
+
+[colors.normal]
+black = "#45475A"
+red = "#F38BA8"
+green = "#A6E3A1"
+yellow = "#F9E2AF"
+blue = "#89B4FA"
+magenta = "#F5C2E7"
+cyan = "#94E2D5"
+white = "#BAC2DE"
+
+[colors.bright]
+black = "#585B70"
+red = "#F38BA8"
+green = "#A6E3A1"
+yellow = "#F9E2AF"
+blue = "#89B4FA"
+magenta = "#F5C2E7"
+cyan = "#94E2D5"
+white = "#A6ADC8"

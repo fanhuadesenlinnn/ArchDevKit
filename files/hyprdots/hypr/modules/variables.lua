@@ -1,5 +1,5 @@
 local variables = {
-	terminal = "kitty",
+	terminal = "~/.local/bin/archdevkit-terminal",
 	fileManager = "yazi",
 	menu = "rofi -show run",
 	browser = "google-chrome-stable",

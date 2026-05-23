@@ -71,7 +71,7 @@
     "tooltip-format-wifi": "Down {bandwidthDownBytes} | Up {bandwidthUpBytes} | {essid}",
     "tooltip-format-disconnected": "Disconnected",
     "on-click": "~/.config/rofi/wifi/wifi.sh",
-    "on-click-right": "kitty -e nmtui"
+    "on-click-right": "~/.local/bin/archdevkit-terminal -e nmtui"
   },
   "network#speed": {
     "interval": 1,
@@ -89,19 +89,19 @@
   "cpu": {
     "interval": 1,
     "format": "<span color='#89b4fa'>CPU</span> {usage}%",
-    "on-click": "kitty -e btop"
+    "on-click": "~/.local/bin/archdevkit-terminal -e btop"
   },
   "memory": {
     "interval": 1,
     "format": "<span color='#89b4fa'>MEM</span> {percentage}%",
-    "on-click": "kitty -e btop",
+    "on-click": "~/.local/bin/archdevkit-terminal -e btop",
     "tooltip-format": "{used}/{total} GiB"
   },
   "custom/wallpaper": {
     "format": "WALL",
     "on-click": "~/.config/waybar/scripts/change-wallpaper.sh",
     "tooltip": false,
-    "on-click-right": "kitty -e ~/.config/waybar/scripts/select-wallpaper.sh"
+    "on-click-right": "~/.local/bin/archdevkit-terminal -e ~/.config/waybar/scripts/select-wallpaper.sh"
   },
   "custom/gh": {
     "exec": "sleep 1 && ~/.config/waybar/scripts/weekly_commits dark",

@@ -366,7 +366,7 @@ tooltip_lines.append("󰍽 LMB: Btop")
 
 save_history(cpu_history, per_core_history)
 
-TERMINAL = os.environ.get("TERMINAL") or shutil.which("alacritty") or "xterm"
+TERMINAL = os.environ.get("TERMINAL") or shutil.which("alacritty") or shutil.which("foot") or "alacritty"
 if os.environ.get("WAYBAR_CLICK_TYPE") == "left":
     subprocess.Popen([TERMINAL, "-e", "btop"])
 
