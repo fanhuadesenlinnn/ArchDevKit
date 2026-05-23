@@ -140,6 +140,7 @@ desktop_hyprdots_packages() {
     eza
     fastfetch
     fd
+    foot
     fzf
     grim
     hypridle
@@ -150,7 +151,6 @@ desktop_hyprdots_packages() {
     hyprpolkitagent
     jq
     kitty
-    foot
     libnotify
     mesa
     networkmanager
@@ -361,20 +361,21 @@ install_desktop_runtime_helpers() {
   mkdir -p "$(dirname "${helper}")"
   cat > "${helper}" <<'EOF'
 #!/usr/bin/env bash
-set -e
+set -u
 
-if command -v kitty >/dev/null 2>&1; then
-  exec kitty "$@"
-fi
-if command -v foot >/dev/null 2>&1; then
-  exec foot "$@"
-fi
-if command -v alacritty >/dev/null 2>&1; then
-  exec alacritty "$@"
-fi
-if command -v xterm >/dev/null 2>&1; then
-  exec xterm "$@"
-fi
+try_terminal() {
+  local terminal="$1"
+  shift
+
+  command -v "${terminal}" >/dev/null 2>&1 || return 1
+  "${terminal}" "$@" && exit 0
+  return 1
+}
+
+try_terminal foot "$@"
+try_terminal kitty "$@"
+try_terminal alacritty "$@"
+try_terminal xterm "$@"
 
 notify-send "Terminal unavailable" "Install kitty or foot." 2>/dev/null || true
 exit 127
