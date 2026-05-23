@@ -509,6 +509,7 @@ install_hyprdots_config() {
     install_hyprdots_config_module "${source_root}" "${module}"
   done
 
+  disable_hyprland_lua_entrypoint
   install_hyprdots_local_bin "${source_root}"
   ensure_hyprdots_wallpaper_dir
   ensure_hyprpaper_config
@@ -539,6 +540,22 @@ install_hyprdots_config_module() {
   backup_path "${target}"
   cp -a "${source}" "${target}"
   make_hyprdots_scripts_executable "${target}"
+}
+
+disable_hyprland_lua_entrypoint() {
+  local lua_entry="${HOME}/.config/hypr/hyprland.lua"
+  local disabled_entry="${lua_entry}.disabled"
+
+  [[ -e "${lua_entry}" || -L "${lua_entry}" ]] || return 0
+
+  log_warn "检测到 Hyprland Lua 入口配置，禁用它以使用 hyprland.conf 启动：${lua_entry}"
+  if [[ "${DRY_RUN:-0}" -eq 1 ]]; then
+    echo "+ mv ${lua_entry} ${disabled_entry}"
+    return 0
+  fi
+
+  backup_path "${disabled_entry}"
+  mv "${lua_entry}" "${disabled_entry}"
 }
 
 make_hyprdots_scripts_executable() {
