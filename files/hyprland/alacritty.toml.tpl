@@ -9,21 +9,21 @@ padding = { x = 8, y = 8 }
 decorations = "None"
 opacity = 1.0
 
-# 字体建议使用 Nerd Font，保证图标和终端提示符能正常显示。
+# 默认使用 Monaco，与系统 UI 字体保持一致；中文和 Emoji 由 fontconfig 回退到 Noto。
 [font]
 size = 12.5
 
 [font.normal]
-family = "JetBrainsMono Nerd Font Mono"
+family = "Monaco"
 style = "Regular"
 
 [font.bold]
-family = "JetBrainsMono Nerd Font Mono"
-style = "Bold"
+family = "Monaco"
+style = "Regular"
 
 [font.italic]
-family = "JetBrainsMono Nerd Font Mono"
-style = "Italic"
+family = "Monaco"
+style = "Regular"
 
 [colors.primary]
 background = "#1C1C1C"
