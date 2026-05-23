@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # 字体模块
-# 安装中文字体、Emoji、Nerd Font，并可选通过 archlinuxcn 安装 Monaco 字体。
+# 安装 fontconfig、中文字体、Emoji、Nerd Font，并可选通过 archlinuxcn 安装 Monaco 字体。
 
 install_fonts() {
   if is_done "fonts"; then
@@ -10,7 +10,7 @@ install_fonts() {
 
   log_info "开始安装字体环境"
 
-  local packages=()
+  local packages=(fontconfig)
 
   if [[ "${INSTALL_CN_FONTS:-0}" -eq 1 ]]; then
     packages+=(noto-fonts noto-fonts-cjk noto-fonts-emoji)
@@ -24,9 +24,7 @@ install_fonts() {
     packages+=("${MONACO_FONT_PACKAGE:-ttf-monaco}")
   fi
 
-  if [[ "${#packages[@]}" -gt 0 ]]; then
-    install_packages_or_aur "${packages[@]}"
-  fi
+  install_packages_or_aur "${packages[@]}"
 
   if [[ "${MONACO_AS_SYSTEM_FONT:-0}" -eq 1 ]]; then
     configure_monaco_system_font
