@@ -45,7 +45,7 @@ ArchDevKit - Arch Linux 工作站初始化工具
   --go-version VERSION      指定 Go 版本
   --no-sddm                 不启用 SDDM
   --nvidia                  安装 NVIDIA Wayland 相关包
-  --gpu TYPE                指定 GPU 类型：auto / intel / amd / nvidia / vmware / virtio / qxl / none
+  --gpu TYPE                指定 GPU 类型：auto / intel / amd / nvidia / vmware / virtio / qxl / virtualbox / none
   --monaco                  安装 Monaco 字体
   --browser-package NAME    指定桌面浏览器安装包
   --browser-app COMMAND     指定桌面浏览器启动命令
@@ -173,6 +173,8 @@ show_config() {
   echo "Docker 镜像源:        $(bool_text "${CONFIGURE_DOCKER_MIRRORS}")"
   echo "Hyprland SDDM:        $(bool_text "${ENABLE_SDDM}")"
   echo "GPU 类型:             ${GPU_TYPE}"
+  echo "VM 低延迟配置:        $(bool_text "${VM_HYPRLAND_LOW_LATENCY:-1}")"
+  echo "VM 显示 fallback:     ${VM_HYPRLAND_MONITOR_MODE:-${VMWARE_HYPRLAND_MONITOR_MODE:-1920x1080@60}}"
   echo "Hyprland 配置模式:    ${HYPRLAND_CONFIG_MODE}"
   if hyprdots_mode_enabled; then
     echo "hyprdots 来源提交:    ${HYPRDOTS_SOURCE_COMMIT:-unknown}"
@@ -184,6 +186,7 @@ show_config() {
   fi
   echo "浏览器安装包:         ${BROWSER_PACKAGE}"
   echo "浏览器启动命令:       ${BROWSER_APP}"
+  echo "终端启动命令:         ${TERMINAL_APP}"
   echo "输入法框架:           Fcitx5 $(bool_text "${ENABLE_FCITX5}")"
   echo "输入法引擎:           ${INPUT_METHOD_ENGINE}"
   echo "Rime 默认方案:        ${RIME_SCHEMA}"
@@ -417,6 +420,7 @@ show_plan() {
   if plan_has_module "${modules_text}" "desktop"; then
     echo "  Hyprland SDDM:    $(bool_text "${ENABLE_SDDM}")"
     echo "  GPU 类型:         ${GPU_TYPE}"
+    echo "  VM 低延迟配置:    $(bool_text "${VM_HYPRLAND_LOW_LATENCY:-1}")"
     echo "  Hyprland 配置:    ${HYPRLAND_CONFIG_MODE}"
     if hyprdots_mode_enabled; then
       echo "  hyprdots 提交:    ${HYPRDOTS_SOURCE_COMMIT:-unknown}"

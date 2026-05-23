@@ -16,6 +16,7 @@ local function bindDsp(modifier, key, dispatcher)
 end
 
 -- ── Apps ─────────────────────────────────────────────────────────
+bind(mod, "Return", vars.terminal)
 bind(mod, "T", vars.terminal)
 bind(mod, "E", vars.terminal .. " -e " .. vars.fileManager)
 bind(mod, "C", vars.colorpicker .. " -a")

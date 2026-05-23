@@ -90,13 +90,15 @@ ENABLE_BLUETOOTH=1
 ENABLE_FCITX5=1
 INPUT_METHOD_ENGINE="rime"
 RIME_SCHEMA="luna_pinyin_simp"
-INSTALL_RIME_CONFIG=1
+INSTALL_RIME_CONFIG=0
 RIME_CONFIG_REPO="https://github.com/fanhuadesenlinnn/rime-config.git"
 RIME_CONFIG_BRANCH=""
 RIME_CONFIG_DIR="${HOME}/.local/share/fcitx5/rime"
-GPU_TYPE="auto" # auto / intel / amd / nvidia / vmware / virtio / qxl / none
+GPU_TYPE="auto" # auto / intel / amd / nvidia / vmware / virtio / qxl / virtualbox / none
 VMWARE_HYPRLAND_MONITOR_MODE="1920x1080@60"
 VMWARE_FORCE_SOFTWARE_RENDERER=0
+VM_HYPRLAND_MONITOR_MODE="1920x1080@60"
+VM_HYPRLAND_LOW_LATENCY=1
 HYPRLAND_CONFIG_MODE="hyprdots" # hyprdots / template / skip
 HYPRDOTS_SOURCE_DIR="${SCRIPT_DIR}/files/hyprdots"
 HYPRDOTS_SOURCE_COMMIT="0158219"
@@ -119,7 +121,7 @@ HYPRDOTS_CONFIG_MODULES=(
   gtk-4.0
 )
 
-TERMINAL_APP="kitty"
+TERMINAL_APP="${HOME}/.local/bin/archdevkit-terminal"
 APP_LAUNCHER="rofi"
 FILE_MANAGER="yazi"
 BROWSER_PACKAGE="google-chrome"

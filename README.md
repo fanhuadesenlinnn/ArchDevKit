@@ -122,7 +122,7 @@ bash install.sh nvim --github-proxy https://gh-proxy.com/
 --go-version VERSION      指定 Go 版本
 --no-sddm                 不启用 SDDM
 --nvidia                  安装 NVIDIA Wayland 相关包
---gpu TYPE                指定 GPU 类型：auto / intel / amd / nvidia / vmware / virtio / qxl / none
+--gpu TYPE                指定 GPU 类型：auto / intel / amd / nvidia / vmware / virtio / qxl / virtualbox / none
 --monaco                  安装 Monaco 字体
 --browser-package NAME    指定桌面浏览器安装包
 --browser-app COMMAND     指定桌面浏览器启动命令
@@ -151,17 +151,11 @@ Hyprland 桌面默认安装 Google Chrome，不安装 Firefox。默认浏览器�
 
 `--no-sddm` 会同时跳过 SDDM 包安装和服务启用；`ENABLE_BLUETOOTH=0` 会跳过蓝牙相关包和服务启用。
 
-GPU 默认使用 `GPU_TYPE=auto` 根据 `lspci` 自动识别。物理机上会按 Intel、AMD、NVIDIA 安装对应 Wayland/Vulkan/媒体驱动；virtio、QXL 虚拟显卡会安装软件渲染兜底，并只在生成的 Hyprland 配置里为虚拟显卡写入 llvmpipe 环境，避免影响后续物理机硬件渲染。
+GPU 默认使用 `GPU_TYPE=auto` 根据 `lspci` 和 `systemd-detect-virt` 自动识别。物理机上会按 Intel、AMD、NVIDIA 安装对应 Wayland/Vulkan/媒体驱动；VMware、virtio、QXL、VirtualBox 虚拟显卡会安装对应 guest agent、Mesa 检测工具和软件渲染兜底。脚本会优先检测可用的硬件/3D 渲染器，只有检测不到可用渲染器时才向 Hyprland 配置写入 llvmpipe 兜底，避免 VM 在支持 3D 加速时被强制降速。
 
-VMware 虚拟机建议在虚拟机设置中启用 3D 图形加速。脚本会安装 `open-vm-tools`、启用 `vmtoolsd.service` / `vmware-vmblock-fuse.service`，并写入 `Virtual-1` 的 1080p fallback 和 `vmware-user-suid-wrapper` 自启动。检测到 Mesa `SVGA3D` 时会清理旧的 llvmpipe 环境，让 Hyprland 和 Chrome 使用 `/dev/dri/renderD*`；检测不到 3D 渲染器时才写入 llvmpipe 兜底。特殊情况下可设置 `VMWARE_FORCE_SOFTWARE_RENDERER=1` 强制使用软件渲染。
+虚拟机建议在宿主机管理器里启用 3D 图形加速和鼠标/剪贴板集成。脚本会按环境处理 guest agent：VMware 安装并启用 `open-vm-tools`，QEMU/KVM virtio 或 QXL 安装并启用 `qemu-guest-agent` / `spice-vdagent`，VirtualBox 安装并启用 `virtualbox-guest-utils`。生成的 Hyprland 配置会加入 1080p fallback、guest agent 用户会话自启动，并默认关闭动画、阴影和模糊以降低 VM 延迟；可用 `VM_HYPRLAND_LOW_LATENCY=0` 关闭这组低延迟覆盖。特殊情况下可设置 `VMWARE_FORCE_SOFTWARE_RENDERER=1` 强制使用软件渲染。
 
-中文输入法默认使用 Fcitx5 + Rime，默认方案为 `luna_pinyin_simp`。Rime 配置默认从独立仓库拉取并安装到 `~/.local/share/fcitx5/rime`：
-
-```bash
-https://github.com/fanhuadesenlinnn/rime-config.git
-```
-
-该仓库只保留可共享配置，不包含 `build/`、`*.userdb/`、`sync/`、`installation*.yaml`、`user*.yaml` 等机器状态、同步数据和个人输入习惯文件。
+中文输入法默认使用 Fcitx5 + Rime，默认方案为 `luna_pinyin_simp`。默认不拉取个人 Rime 配置仓库，直接使用 `fcitx5-rime` 和 `rime-luna-pinyin` 提供的默认配置；后续需要个人配置时再通过 `--rime-repo` 或 `INSTALL_RIME_CONFIG=1` 安装到 `~/.local/share/fcitx5/rime`。
 
 hyprdots 的 Web App 启动器和 Obsidian 是可选内容，默认不安装，避免为了非必需应用触发额外 AUR 安装。需要完整启用时可以显式打开：
 

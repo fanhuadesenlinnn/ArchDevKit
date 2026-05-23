@@ -88,6 +88,7 @@ debug {
 }
 
 bind = $mod, Return, exec, $terminal
+bind = $mod, T, exec, $terminal
 bind = $mod, Space, exec, $menu
 bind = $mod, E, exec, $fileManager
 bind = $mod, B, exec, __BROWSER_APP__

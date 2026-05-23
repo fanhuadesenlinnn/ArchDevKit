@@ -19,13 +19,14 @@ install_desktop_hyprland() {
   install_browser_package
   install_hyprdots_optional_packages
   install_gpu_packages_if_needed
+  install_desktop_runtime_helpers
   enable_desktop_services
   enable_desktop_audio_services
   configure_fcitx5_env
   configure_rime_if_needed
   generate_hyprland_config
   configure_hyprland_gpu_env
-  configure_hyprland_vmware_env
+  configure_hyprland_virtualization_env
   enable_sddm_if_needed
   verify_hyprland
 
@@ -66,13 +67,16 @@ desktop_needs_archlinuxcn() {
 }
 
 detect_gpu_type() {
-  local pci_info
+  local pci_info virt_type
   pci_info="$(lspci 2>/dev/null | grep -Ei 'VGA|3D|Display' || true)"
+  virt_type="$(detect_virtualization_type)"
 
   if grep -qi 'nvidia' <<<"${pci_info}"; then
     printf '%s\n' "nvidia"
   elif grep -qi 'vmware' <<<"${pci_info}"; then
     printf '%s\n' "vmware"
+  elif [[ "${virt_type}" == "oracle" || "${virt_type}" == "virtualbox" ]] || grep -qi 'virtualbox' <<<"${pci_info}"; then
+    printf '%s\n' "virtualbox"
   elif grep -qi 'virtio' <<<"${pci_info}"; then
     printf '%s\n' "virtio"
   elif grep -qi 'qxl' <<<"${pci_info}"; then
@@ -84,6 +88,17 @@ detect_gpu_type() {
   else
     printf '%s\n' "none"
   fi
+}
+
+detect_virtualization_type() {
+  local virt_type="none"
+
+  if command -v systemd-detect-virt >/dev/null 2>&1; then
+    virt_type="$(systemd-detect-virt 2>/dev/null || true)"
+  fi
+
+  [[ -n "${virt_type}" ]] || virt_type="none"
+  printf '%s\n' "${virt_type}"
 }
 
 effective_gpu_type() {
@@ -135,6 +150,7 @@ desktop_hyprdots_packages() {
     hyprpolkitagent
     jq
     kitty
+    foot
     libnotify
     mesa
     networkmanager
@@ -197,6 +213,7 @@ desktop_template_packages() {
     waybar
     wofi
     kitty
+    foot
     thunar
     thunar-archive-plugin
     file-roller
@@ -294,10 +311,11 @@ install_hyprdots_optional_packages() {
 }
 
 install_gpu_packages_if_needed() {
-  local gpu
+  local gpu virt_type
   gpu="$(effective_gpu_type)"
+  virt_type="$(detect_virtualization_type)"
 
-  log_info "检测到 GPU 类型：${gpu}"
+  log_info "检测到 GPU 类型：${gpu}，虚拟化环境：${virt_type}"
 
   case "${gpu}" in
     nvidia)
@@ -315,8 +333,12 @@ install_gpu_packages_if_needed() {
       pacman_install open-vm-tools vulkan-swrast mesa-utils
       ;;
     virtio|qxl)
-      log_warn "检测到虚拟显卡 ${gpu}；安装软件渲染栈作为 Wayland 兜底"
-      pacman_install vulkan-swrast mesa-utils
+      log_warn "检测到虚拟显卡 ${gpu}；安装 QEMU/SPICE guest agent、Mesa 检测工具和软件渲染兜底"
+      pacman_install qemu-guest-agent spice-vdagent vulkan-swrast mesa-utils
+      ;;
+    virtualbox)
+      log_warn "检测到 VirtualBox 虚拟显卡；安装 VirtualBox guest utils、Mesa 检测工具和软件渲染兜底"
+      pacman_install virtualbox-guest-utils vulkan-swrast mesa-utils
       ;;
     none)
       log_warn "未检测到明确 GPU 类型，跳过专用驱动包"
@@ -325,6 +347,39 @@ install_gpu_packages_if_needed() {
       log_warn "未知 GPU 类型：${gpu}，跳过专用驱动包"
       ;;
   esac
+}
+
+install_desktop_runtime_helpers() {
+  local helper="${HOME}/.local/bin/archdevkit-terminal"
+
+  log_info "安装桌面运行时辅助脚本：${helper}"
+  if [[ "${DRY_RUN:-0}" -eq 1 ]]; then
+    echo "+ write ${helper}"
+    return 0
+  fi
+
+  mkdir -p "$(dirname "${helper}")"
+  cat > "${helper}" <<'EOF'
+#!/usr/bin/env bash
+set -e
+
+if command -v kitty >/dev/null 2>&1; then
+  exec kitty "$@"
+fi
+if command -v foot >/dev/null 2>&1; then
+  exec foot "$@"
+fi
+if command -v alacritty >/dev/null 2>&1; then
+  exec alacritty "$@"
+fi
+if command -v xterm >/dev/null 2>&1; then
+  exec xterm "$@"
+fi
+
+notify-send "Terminal unavailable" "Install kitty or foot." 2>/dev/null || true
+exit 127
+EOF
+  chmod +x "${helper}"
 }
 
 enable_desktop_services() {
@@ -336,6 +391,8 @@ enable_desktop_services() {
   fi
 
   enable_vmware_services_if_needed
+  enable_qemu_services_if_needed
+  enable_virtualbox_services_if_needed
 }
 
 enable_vmware_services_if_needed() {
@@ -350,6 +407,34 @@ enable_vmware_services_if_needed() {
   if systemd_system_unit_exists vmware-vmblock-fuse.service; then
     run_sudo systemctl enable --now vmware-vmblock-fuse.service || \
       log_warn "vmware-vmblock-fuse.service 启用失败，可稍后手动处理"
+  fi
+}
+
+enable_qemu_services_if_needed() {
+  case "$(effective_gpu_type)" in
+    virtio|qxl) ;;
+    *) return 0 ;;
+  esac
+
+  log_info "启用 QEMU/SPICE guest 服务"
+  if systemd_system_unit_exists qemu-guest-agent.service; then
+    run_sudo systemctl enable --now qemu-guest-agent.service || \
+      log_warn "qemu-guest-agent.service 启用失败，可稍后手动处理"
+  fi
+
+  if systemd_system_unit_exists spice-vdagentd.service; then
+    run_sudo systemctl enable --now spice-vdagentd.service || \
+      log_warn "spice-vdagentd.service 启用失败，可稍后手动处理"
+  fi
+}
+
+enable_virtualbox_services_if_needed() {
+  [[ "$(effective_gpu_type)" == "virtualbox" ]] || return 0
+
+  log_info "启用 VirtualBox guest 服务"
+  if systemd_system_unit_exists vboxservice.service; then
+    run_sudo systemctl enable --now vboxservice.service || \
+      log_warn "vboxservice.service 启用失败，可稍后手动处理"
   fi
 }
 
@@ -395,8 +480,11 @@ configure_rime_if_needed() {
   configure_fcitx5_rime_profile
 }
 
-vmware_3d_acceleration_available() {
-  [[ "$(effective_gpu_type)" == "vmware" ]] || return 1
+virtual_gpu_3d_acceleration_available() {
+  case "$(effective_gpu_type)" in
+    vmware|virtio|qxl|virtualbox) ;;
+    *) return 1 ;;
+  esac
   [[ "${VMWARE_FORCE_SOFTWARE_RENDERER:-0}" -eq 1 ]] && return 1
 
   local render_nodes=()
@@ -406,7 +494,7 @@ vmware_3d_acceleration_available() {
   [[ "${#render_nodes[@]}" -gt 0 ]] || return 1
 
   if command -v eglinfo >/dev/null 2>&1; then
-    local egl_output
+    local egl_output renderer_line
     egl_output="$(
       env \
         -u LIBGL_ALWAYS_SOFTWARE \
@@ -415,9 +503,11 @@ vmware_3d_acceleration_available() {
         eglinfo -B 2>/dev/null || true
     )"
 
-    if grep -Eq 'OpenGL.*renderer: SVGA3D|OpenGL renderer string: SVGA3D|OpenGL.*vendor: VMware, Inc\.' <<<"${egl_output}"; then
+    while IFS= read -r renderer_line; do
+      [[ -n "${renderer_line}" ]] || continue
+      grep -Eqi 'llvmpipe|softpipe|software rasterizer' <<<"${renderer_line}" && continue
       return 0
-    fi
+    done < <(grep -Ei 'OpenGL.*renderer|renderer:' <<<"${egl_output}" || true)
   fi
 
   return 1
@@ -426,10 +516,13 @@ vmware_3d_acceleration_available() {
 hyprland_needs_software_renderer() {
   case "$(effective_gpu_type)" in
     vmware)
-      vmware_3d_acceleration_available && return 1
+      virtual_gpu_3d_acceleration_available && return 1
       return 0
       ;;
-    virtio|qxl) return 0 ;;
+    virtio|qxl|virtualbox)
+      virtual_gpu_3d_acceleration_available && return 1
+      return 0
+      ;;
     *) return 1 ;;
   esac
 }
@@ -478,48 +571,89 @@ EOF
       cat "${tmp_file}"
     } > "${with_env}"
     mv "${with_env}" "${tmp_file}"
-  elif [[ "${gpu}" == "vmware" ]]; then
-    log_info "检测到 VMware SVGA3D 硬件渲染；清理 Hyprland llvmpipe 兜底环境"
+  elif [[ "${gpu}" == "vmware" || "${gpu}" == "virtio" || "${gpu}" == "qxl" || "${gpu}" == "virtualbox" ]]; then
+    log_info "检测到虚拟机可用硬件/3D 渲染；清理 Hyprland llvmpipe 兜底环境"
   fi
 
   install -m 0644 "${tmp_file}" "${hypr_conf}"
   rm -f "${tmp_file}"
 }
 
-configure_hyprland_vmware_env() {
+configure_hyprland_virtualization_env() {
   local hypr_conf="${HOME}/.config/hypr/hyprland.conf"
-  local mode="${VMWARE_HYPRLAND_MONITOR_MODE:-1920x1080@60}"
-  local tmp_file
+  local mode="${VM_HYPRLAND_MONITOR_MODE:-${VMWARE_HYPRLAND_MONITOR_MODE:-1920x1080@60}}"
+  local tmp_file gpu
 
   [[ -f "${hypr_conf}" ]] || return 0
-  [[ "$(effective_gpu_type)" == "vmware" ]] || return 0
+  gpu="$(effective_gpu_type)"
+  case "${gpu}" in
+    vmware|virtio|qxl|virtualbox) ;;
+    *) return 0 ;;
+  esac
 
   if [[ "${DRY_RUN:-0}" -eq 1 ]]; then
-    echo "+ set VMware Hyprland monitor fallback ${mode} in ${hypr_conf}"
-    echo "+ enable vmware-user-suid-wrapper autostart in ${hypr_conf}"
+    echo "+ set VM Hyprland monitor fallback ${mode} in ${hypr_conf}"
+    echo "+ enable VM guest agent autostart for ${gpu} in ${hypr_conf}"
+    echo "+ apply low-latency Hyprland overrides for ${gpu} in ${hypr_conf}"
     return 0
   fi
 
   tmp_file="$(mktemp)"
   sed \
+    -e '/^### ArchDevKit VM integration ###$/,/^### End ArchDevKit VM integration ###$/d' \
     -e '/^exec-once = vmware-user-suid-wrapper$/d' \
-    -e 's/^monitor[[:space:]]*=[[:space:]]*,preferred,auto,auto[[:space:]]*$/monitor=Virtual-1,'"${mode}"',auto,1/' \
-    -e 's/^monitor[[:space:]]*=[[:space:]]*Virtual-1,.*/monitor=Virtual-1,'"${mode}"',auto,1/' \
+    -e '/^exec-once = spice-vdagent$/d' \
+    -e '/^exec-once = VBoxClient-all$/d' \
+    -e 's/^monitor[[:space:]]*=[[:space:]]*,preferred,auto,\(auto\|1\)[[:space:]]*$/monitor=,'"${mode}"',auto,1/' \
+    -e 's/^monitor[[:space:]]*=[[:space:]]*Virtual-1,.*/monitor=,'"${mode}"',auto,1/' \
     "${hypr_conf}" > "${tmp_file}"
 
-  if ! grep -Eq '^monitor[[:space:]]*=[[:space:]]*Virtual-1,' "${tmp_file}"; then
+  if ! grep -Eq '^monitor[[:space:]]*=[[:space:]]*,'"${mode//./\\.}"',' "${tmp_file}"; then
     local with_monitor
     with_monitor="$(mktemp)"
     {
-      printf 'monitor=Virtual-1,%s,auto,1\n' "${mode}"
+      printf 'monitor=,%s,auto,1\n' "${mode}"
       cat "${tmp_file}"
     } > "${with_monitor}"
     mv "${with_monitor}" "${tmp_file}"
   fi
 
-  if ! grep -Fxq 'exec-once = vmware-user-suid-wrapper' "${tmp_file}"; then
-    printf '\nexec-once = vmware-user-suid-wrapper\n' >> "${tmp_file}"
-  fi
+  {
+    printf '\n### ArchDevKit VM integration ###\n'
+    case "${gpu}" in
+      vmware)
+        printf 'exec-once = vmware-user-suid-wrapper\n'
+        ;;
+      virtio|qxl)
+        printf 'exec-once = spice-vdagent\n'
+        ;;
+      virtualbox)
+        printf 'exec-once = VBoxClient-all\n'
+        ;;
+    esac
+    if [[ "${VM_HYPRLAND_LOW_LATENCY:-1}" -eq 1 ]]; then
+      cat <<'EOF'
+animations {
+    enabled = false
+}
+
+decoration {
+    shadow {
+        enabled = false
+    }
+    blur {
+        enabled = false
+    }
+}
+
+input {
+    sensitivity = 0
+    force_no_accel = false
+}
+EOF
+    fi
+    printf '### End ArchDevKit VM integration ###\n'
+  } >> "${tmp_file}"
 
   install -m 0644 "${tmp_file}" "${hypr_conf}"
   rm -f "${tmp_file}"
@@ -812,7 +946,7 @@ apply_hyprdots_runtime_overrides() {
   if [[ "${INSTALL_HYPRDOTS_OBSIDIAN:-0}" -eq 1 ]]; then
     note_app="$(sed_escape_replacement "obsidian")"
   else
-    note_app="$(sed_escape_replacement "true")"
+    note_app="$(sed_escape_replacement ":")"
   fi
 
   if [[ -f "${hypr_conf}" ]]; then
