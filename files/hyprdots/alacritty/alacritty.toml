@@ -9,21 +9,21 @@ padding = { x = 10, y = 10 }
 decorations = "None"
 opacity = 1.0
 
-# Nerd Font 用于显示图标、Powerline 提示符和部分 TUI 符号。
+# 默认使用 Monaco，与系统 UI 字体保持一致；中文和 Emoji 由 fontconfig 回退到 Noto。
 [font]
 size = 12.5
 
 [font.normal]
-family = "JetBrainsMono Nerd Font Mono"
+family = "Monaco"
 style = "Regular"
 
 [font.bold]
-family = "JetBrainsMono Nerd Font Mono"
-style = "Bold"
+family = "Monaco"
+style = "Regular"
 
 [font.italic]
-family = "JetBrainsMono Nerd Font Mono"
-style = "Italic"
+family = "Monaco"
+style = "Regular"
 
 [colors.primary]
 background = "#1C1C1C"
