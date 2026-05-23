@@ -74,7 +74,10 @@ SYSTEM_FONT_FAMILY="Monaco"
 SYSTEM_MONOSPACE_FONT_FAMILY="Monaco"
 SYSTEM_CJK_FONT_FAMILY="Noto Sans CJK SC"
 SYSTEM_EMOJI_FONT_FAMILY="Noto Color Emoji"
-MONACO_FONT_URL="http://www.gringod.com/wp-upload/software/Fonts/Monaco_Linux.ttf"
+# Monaco 来源不要默认依赖第三方 HTTP；如需安装，请把字体放到本地路径或显式填写可信 URL。
+MONACO_FONT_LOCAL_PATH="${SCRIPT_DIR}/files/fonts/Monaco_Linux.ttf"
+MONACO_FONT_URL=""
+MONACO_FONT_REQUIRED=0
 MONACO_FONT_DIR="/usr/share/fonts/truetype/Monaco"
 
 # =========================
