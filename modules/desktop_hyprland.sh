@@ -363,12 +363,20 @@ install_desktop_runtime_helpers() {
 #!/usr/bin/env bash
 set -u
 
+log_dir="${XDG_CACHE_HOME:-${HOME}/.cache}/archdevkit"
+log_file="${log_dir}/terminal.log"
+mkdir -p "${log_dir}"
+
 try_terminal() {
   local terminal="$1"
   shift
 
   command -v "${terminal}" >/dev/null 2>&1 || return 1
-  "${terminal}" "$@" && exit 0
+  {
+    printf '[%s] trying %s\n' "$(date '+%F %T')" "${terminal}"
+    "${terminal}" "$@"
+  } >>"${log_file}" 2>&1 && exit 0
+  printf '[%s] %s exited with status %s\n' "$(date '+%F %T')" "${terminal}" "$?" >>"${log_file}"
   return 1
 }
 
