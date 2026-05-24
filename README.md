@@ -86,6 +86,54 @@ bash install.sh proxy
 bash install.sh config
 ```
 
+## 命令体系
+
+ArchDevKit 的交互式和参数式安装现在共用同一套安装计划。无参数运行会进入交互式向导，所有问题都会显示 `install_vars` 中的当前默认值，直接回车即采用推荐配置。
+
+```bash
+bash install.sh menu
+bash install.sh plan workstation
+bash install.sh install workstation
+bash install.sh status
+bash install.sh doctor
+bash install.sh reset-state proxy
+```
+
+旧用法仍然兼容：
+
+```bash
+bash install.sh workstation
+bash install.sh proxy
+```
+
+等价于：
+
+```bash
+bash install.sh install workstation
+bash install.sh install proxy
+```
+
+常用自动化输出：
+
+```bash
+bash install.sh plan workstation --json
+bash install.sh status --json
+bash install.sh doctor --json
+```
+
+安装成功后，模块状态会写入 `ARCHDEVKIT_STATE_DIR`，默认是 `~/.local/state/archdevkit`。后续重复安装同一模块时，如果状态、关键配置指纹和轻量校验都通过，会自动跳过；需要重跑时使用：
+
+```bash
+bash install.sh install proxy --force
+bash install.sh reset-state proxy
+```
+
+本地校验：
+
+```bash
+scripts/test.sh
+```
+
 ## 默认网络配置
 
 默认开启中国大陆友好配置：
@@ -120,6 +168,10 @@ bash install.sh nvim --github-proxy https://gh-proxy.com/
 ```bash
 -y, --yes                 自动确认
 --dry-run                 只显示计划，不执行
+--force                   忽略模块状态，强制重跑目标模块
+--resume                  保留兼容参数；默认已经会从成功状态跳过已安装模块
+--no-state                不读取或写入模块状态
+--json                    plan/status/doctor 输出 JSON
 --no-china                不配置 npm/pip 国内源
 --no-github-proxy         不使用 GitHub 代理
 --github-proxy URL        指定 GitHub 代理

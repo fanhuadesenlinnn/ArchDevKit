@@ -7,6 +7,9 @@
 # =========================
 ASSUME_YES=0
 DRY_RUN=0
+ARCHDEVKIT_DEFAULT_PROFILE="workstation"
+ARCHDEVKIT_USE_STATE=1
+ARCHDEVKIT_STATE_DIR="${HOME}/.local/state/archdevkit"
 
 # =========================
 # 中国大陆网络默认配置

@@ -20,7 +20,15 @@ source "${SCRIPT_DIR}/modules/shell_zsh.sh"
 source "${SCRIPT_DIR}/modules/desktop_hyprland.sh"
 source "${SCRIPT_DIR}/modules/proxy.sh"
 
-COMMAND="menu"
+ACTION="menu"
+TARGET="${ARCHDEVKIT_DEFAULT_PROFILE:-workstation}"
+TARGET_SET=0
+FORCE_INSTALL=0
+NO_STATE=0
+RESUME_INSTALL=0
+OUTPUT_JSON=0
+ARCHDEVKIT_LOG_FILE=""
+MODULE_SKIPPED_LIST=""
 
 show_help() {
   cat <<'EOF'
@@ -28,12 +36,25 @@ ArchDevKit - Arch Linux 工作站初始化工具
 
 用法：
   bash install.sh
+  bash install.sh menu
+  bash install.sh plan [base|dns|archlinuxcn|git|runtime|nvim|docker|fonts|shell|desktop|proxy|dev|workstation]
+  bash install.sh install [base|dns|archlinuxcn|git|runtime|nvim|docker|fonts|shell|desktop|proxy|dev|workstation]
+  bash install.sh status [module]
+  bash install.sh doctor
   bash install.sh config
-  bash install.sh base|dns|archlinuxcn|git|runtime|nvim|docker|fonts|shell|desktop|proxy|dev|workstation
+  bash install.sh reset-state [module|all]
+
+兼容用法：
+  bash install.sh workstation
+  bash install.sh proxy
 
 常用参数：
   -y, --yes                 自动确认
   --dry-run                 只显示计划，不执行
+  --force                   忽略模块状态，强制重跑目标模块
+  --resume                  从状态记录继续，已成功模块自动跳过
+  --no-state                不读取或写入模块状态
+  --json                    plan/status/doctor 输出 JSON
   --no-china                不配置 npm/pip 国内源
   --no-github-proxy         不使用 GitHub 代理
   --github-proxy URL        指定 GitHub 代理
@@ -77,12 +98,32 @@ EOF
 }
 
 parse_args() {
+  local token
   while [[ $# -gt 0 ]]; do
-    case "$1" in
-      base|dns|archlinuxcn|git|runtime|nvim|docker|fonts|shell|zsh|desktop|hyprland|proxy|dev|workstation|config|menu|help)
-        COMMAND="$1"; shift ;;
+    token="$1"
+    case "${token}" in
+      menu|config|help|plan|install|status|doctor|reset-state)
+        ACTION="${token}"; shift ;;
+      all)
+        if [[ "${ACTION}" == "status" || "${ACTION}" == "reset-state" ]]; then
+          TARGET="all"
+          TARGET_SET=1
+          shift
+        else
+          die "all 只能用于 status 或 reset-state"
+        fi
+        ;;
+      base|dns|archlinuxcn|git|runtime|nvim|docker|fonts|shell|zsh|desktop|hyprland|proxy|dev|workstation)
+        TARGET="${token}"
+        TARGET_SET=1
+        [[ "${ACTION}" == "menu" ]] && ACTION="install"
+        shift ;;
       -y|--yes) ASSUME_YES=1; shift ;;
       --dry-run) DRY_RUN=1; shift ;;
+      --force|--reinstall) FORCE_INSTALL=1; shift ;;
+      --resume) RESUME_INSTALL=1; shift ;;
+      --no-state) NO_STATE=1; shift ;;
+      --json) OUTPUT_JSON=1; shift ;;
       --no-china) ENABLE_CHINA_MIRROR=0; shift ;;
       --no-github-proxy) ENABLE_GITHUB_PROXY=0; shift ;;
       --github-proxy) GITHUB_PROXY="${2:-}"; ENABLE_GITHUB_PROXY=1; shift 2 ;;
@@ -152,10 +193,17 @@ parse_args() {
       --p10k) INSTALL_POWERLEVEL10K=1; INSTALL_P10K_CONFIG=1; shift ;;
       --set-zsh-default) SET_ZSH_AS_DEFAULT=1; shift ;;
       --no-set-zsh-default) SET_ZSH_AS_DEFAULT=0; shift ;;
-      -h|--help) COMMAND="help"; shift ;;
+      -h|--help) ACTION="help"; shift ;;
       *) die "未知参数：$1" ;;
     esac
   done
+
+  if [[ "${ACTION}" == "status" && "${TARGET_SET}" -eq 0 ]]; then
+    TARGET="all"
+  fi
+  if [[ "${ACTION}" == "reset-state" && "${TARGET_SET}" -eq 0 ]]; then
+    TARGET="all"
+  fi
 }
 
 show_config() {
@@ -258,7 +306,7 @@ show_config() {
 }
 
 module_desc() {
-  case "$1" in
+  case "$(module_key "$1")" in
     base) echo "基础环境" ;;
     dns) echo "系统 DNS" ;;
     archlinuxcn) echo "archlinuxcn 软件源" ;;
@@ -267,8 +315,8 @@ module_desc() {
     nvim) echo "Neovim + 个人配置" ;;
     docker) echo "Docker / Compose" ;;
     fonts) echo "字体环境" ;;
-    shell|shell_zsh) echo "Zsh / Oh My Zsh / Powerlevel10k" ;;
-    desktop|desktop_hyprland) echo "Hyprland 桌面环境" ;;
+    shell_zsh) echo "Zsh / Oh My Zsh / Powerlevel10k" ;;
+    desktop_hyprland) echo "Hyprland 桌面环境" ;;
     proxy) echo "Proxy 代理环境" ;;
     *) echo "$1" ;;
   esac
@@ -282,10 +330,87 @@ module_key() {
   esac
 }
 
+module_display_key() {
+  case "$(module_key "$1")" in
+    shell_zsh) echo "shell" ;;
+    desktop_hyprland) echo "desktop" ;;
+    *) module_key "$1" ;;
+  esac
+}
+
+all_modules() {
+  echo "base dns archlinuxcn git runtime nvim docker fonts shell_zsh proxy desktop_hyprland"
+}
+
+module_impacts() {
+  case "$(module_key "$1")" in
+    base)
+      echo "刷新 pacman 数据库并安装基础命令行工具"
+      ;;
+    dns)
+      echo "/etc/systemd/resolved.conf.d/90-archdevkit-dns.conf"
+      echo "/etc/NetworkManager/conf.d/90-archdevkit-dns.conf"
+      echo "/etc/resolv.conf"
+      echo "systemd-resolved.service"
+      ;;
+    archlinuxcn)
+      echo "/etc/pacman.conf"
+      echo "archlinuxcn-keyring / archlinuxcn-mirrorlist-git"
+      ;;
+    git)
+      echo "全局 git config"
+      echo "git / github-cli / openssh"
+      ;;
+    runtime)
+      echo "${HOME}/.bashrc"
+      echo "${HOME}/.zshrc"
+      echo "${HOME}/.config/archdevkit/mise-china.env"
+      echo "nodejs / npm / python / go / mise"
+      ;;
+    nvim)
+      echo "${NVIM_CONFIG_DIR}"
+      ;;
+    docker)
+      echo "/etc/docker/daemon.json"
+      echo "docker.service"
+      echo "docker 用户组"
+      ;;
+    fonts)
+      echo "系统字体包和 fontconfig"
+      echo "${HOME}/.config/gtk-3.0/settings.ini"
+      echo "${HOME}/.config/gtk-4.0/settings.ini"
+      ;;
+    shell_zsh)
+      echo "${HOME}/.zshrc"
+      echo "${HOME}/.p10k.zsh"
+      echo "默认 shell"
+      ;;
+    proxy)
+      case "${PROXY_CORE:-mihomo}" in
+        mihomo)
+          echo "${MIHOMO_CONFIG_FILE:-/etc/mihomo/config.yaml}"
+          echo "${MIHOMO_EXTERNAL_UI_DIR:-${MIHOMO_STATE_DIR:-/var/lib/mihomo}/ui}"
+          echo "${MIHOMO_SERVICE_NAME:-mihomo.service}"
+          ;;
+        sing-box)
+          echo "${SING_BOX_CONFIG_FILE:-${HOME}/.config/sing-box/config.json}"
+          echo "${HOME}/.config/systemd/user/archdevkit-sing-box.service"
+          ;;
+      esac
+      echo "${HOME}/.bashrc / ${HOME}/.zshrc proxy env template"
+      ;;
+    desktop_hyprland)
+      echo "${HOME}/.config/hypr"
+      echo "${HOME}/.config/waybar / rofi / dunst / yazi / btop / alacritty"
+      echo "${HOME}/.local/bin"
+      echo "sddm.service / guest agent services"
+      ;;
+  esac
+}
+
 plan_has_module() {
-  local modules_text="$1" wanted
+  local modules_text="$1" wanted m
   wanted="$(module_key "$2")"
-  local m
   for m in ${modules_text}; do
     [[ "$(module_key "${m}")" == "${wanted}" ]] && return 0
   done
@@ -303,9 +428,9 @@ append_plan_module() {
   done
 
   if [[ -z "${modules_text}" ]]; then
-    echo "${module}"
+    echo "${wanted}"
   else
-    echo "${modules_text} ${module}"
+    echo "${modules_text} ${wanted}"
   fi
 }
 
@@ -375,6 +500,18 @@ modules_for_workstation() {
   echo "${modules}"
 }
 
+modules_for_target() {
+  case "$1" in
+    base|dns|archlinuxcn|git|runtime|nvim|docker|fonts) module_key "$1" ;;
+    shell|zsh) modules_for_shell ;;
+    proxy) modules_for_proxy ;;
+    desktop|hyprland) modules_for_desktop ;;
+    dev) modules_for_dev ;;
+    workstation) modules_for_workstation ;;
+    *) die "未知安装目标：$1" ;;
+  esac
+}
+
 plan_uses_github_proxy() {
   local modules_text="$1"
 
@@ -403,35 +540,74 @@ plan_needs_git_command() {
   return 1
 }
 
-modules_for_command() {
-  case "$1" in
-    base) echo "base" ;;
-    dns) echo "dns" ;;
-    archlinuxcn) echo "archlinuxcn" ;;
-    git) echo "git" ;;
-    runtime) echo "runtime" ;;
-    nvim) echo "nvim" ;;
-    docker) echo "docker" ;;
-    fonts) echo "fonts" ;;
-    shell|zsh) modules_for_shell ;;
-    proxy) modules_for_proxy ;;
-    desktop|hyprland) modules_for_desktop ;;
-    dev) modules_for_dev ;;
-    workstation) modules_for_workstation ;;
-    *) echo "$1" ;;
+json_escape() {
+  local value="$1"
+  value="${value//\\/\\\\}"
+  value="${value//\"/\\\"}"
+  value="${value//$'\n'/\\n}"
+  value="${value//$'\r'/}"
+  printf '%s' "${value}"
+}
+
+json_string() {
+  printf '"%s"' "$(json_escape "$1")"
+}
+
+json_bool() {
+  case "${1:-0}" in
+    1|true|yes|on) printf "true" ;;
+    *) printf "false" ;;
   esac
+}
+
+show_plan_json() {
+  local title="$1" modules_text="$2" module first=1
+  printf '{'
+  printf '"target":'; json_string "${title}"; printf ','
+  printf '"stateEnabled":'; json_bool "$(state_enabled && echo 1 || echo 0)"; printf ','
+  printf '"force":'; json_bool "${FORCE_INSTALL}"; printf ','
+  printf '"stateDir":'; json_string "$(state_root)"; printf ','
+  printf '"modules":['
+  for module in ${modules_text}; do
+    [[ "${first}" -eq 1 ]] || printf ','
+    first=0
+    printf '{"name":'; json_string "$(module_display_key "${module}")"
+    printf ',"key":'; json_string "$(module_key "${module}")"
+    printf ',"description":'; json_string "$(module_desc "${module}")"
+    printf '}'
+  done
+  printf ']}'
+  printf '\n'
 }
 
 show_plan() {
   local title="$1" modules_text="$2"
+  if [[ "${OUTPUT_JSON:-0}" -eq 1 ]]; then
+    show_plan_json "${title}" "${modules_text}"
+    return 0
+  fi
+
   echo "----------------------------------------------------------"
   echo "[本次安装计划]"
   echo "安装目标: ${title}"
+  echo "状态目录: $(state_root)"
+  echo "模块状态: $(state_enabled && echo "启用" || echo "关闭")"
+  echo "强制重跑: $(bool_text "${FORCE_INSTALL}")"
+  echo "恢复模式: $(bool_text "${RESUME_INSTALL}")"
   echo
   echo "将执行模块:"
   local m
   for m in ${modules_text}; do
-    echo "  - ${m} ($(module_desc "${m}"))"
+    echo "  - $(module_display_key "${m}") ($(module_desc "${m}"))"
+  done
+  echo
+  echo "主要影响:"
+  local impact
+  for m in ${modules_text}; do
+    while IFS= read -r impact; do
+      [[ -n "${impact}" ]] || continue
+      echo "  - $(module_display_key "${m}"): ${impact}"
+    done < <(module_impacts "${m}")
   done
   echo
   echo "关键配置:"
@@ -534,25 +710,167 @@ show_plan() {
   echo "----------------------------------------------------------"
 }
 
-install_profile_dev() {
-  install_base
-  [[ "${INSTALL_ARCHLINUXCN:-0}" -eq 1 ]] && install_archlinuxcn
-  ensure_dns_env
-  install_git_env
-  install_runtime_env
-  install_nvim_env
-  install_fonts
-  install_shell_zsh
-  ensure_proxy_env
+state_root() {
+  printf "%s" "${ARCHDEVKIT_STATE_DIR:-${HOME}/.local/state/archdevkit}"
 }
 
-install_profile_workstation() {
-  install_profile_dev
-  install_desktop_hyprland
+state_enabled() {
+  [[ "${ARCHDEVKIT_USE_STATE:-1}" -eq 1 && "${NO_STATE:-0}" -ne 1 ]]
 }
 
-run_command() {
-  case "$1" in
+state_prepare_dirs() {
+  state_enabled || return 0
+  [[ "${DRY_RUN:-0}" -eq 1 ]] && return 0
+  mkdir -p "$(state_root)/modules" "$(state_root)/logs"
+}
+
+module_state_file() {
+  printf "%s/modules/%s.state" "$(state_root)" "$(module_key "$1")"
+}
+
+module_config_fingerprint() {
+  local module
+  module="$(module_key "$1")"
+  {
+    printf 'module=%s\n' "${module}"
+    case "${module}" in
+      dns)
+        printf 'dns=%s\n' "${DNS_SERVERS[*]}"
+        printf 'fallback=%s\n' "${DNS_FALLBACK_SERVERS[*]} ${DNS_FOREIGN_FALLBACK_SERVERS[*]}"
+        printf 'dot=%s\n' "${DNS_OVER_TLS:-no}"
+        ;;
+      archlinuxcn)
+        printf 'server=%s\n' "${ARCHLINUXCN_SERVER}"
+        printf 'mirrorlist=%s\n' "${INSTALL_ARCHLINUXCN_MIRRORLIST:-0}"
+        ;;
+      runtime)
+        printf 'runtime=%s\nnode=%s\npython=%s\ngo=%s\nnpm=%s\n' \
+          "${RUNTIME_MANAGER}" "${NODE_VERSION}" "${PYTHON_VERSION}" "${GO_VERSION}" "${NPM_VERSION}"
+        printf 'mirrors=%s|%s|%s\n' "${NODE_MIRROR_URL}" "${GO_DOWNLOAD_MIRROR}" "${PYTHON_BUILD_MIRROR_URL}"
+        ;;
+      nvim)
+        printf 'repo=%s\nbranch=%s\nsync=%s\n' "${NVIM_REPO}" "${NVIM_BRANCH:-}" "${SYNC_NVIM_PLUGINS:-0}"
+        ;;
+      docker)
+        printf 'service=%s\ngroup=%s\nmirrors=%s\n' \
+          "${ENABLE_DOCKER_SERVICE:-0}" "${ADD_USER_TO_DOCKER_GROUP:-0}" "${DOCKER_MIRRORS[*]}"
+        ;;
+      fonts)
+        printf 'cn=%s\nnerd=%s\nmonaco=%s\n' \
+          "${INSTALL_CN_FONTS:-0}" "${INSTALL_NERD_FONTS:-0}" "${INSTALL_MONACO_FONT:-0}"
+        ;;
+      shell_zsh)
+        printf 'ohmyzsh=%s\np10k=%s\nplugins=%s\n' \
+          "${INSTALL_OH_MY_ZSH:-0}" "${INSTALL_POWERLEVEL10K:-0}" "${ZSH_PLUGINS:-}"
+        ;;
+      proxy)
+        printf 'core=%s\nmihomo=%s\nsingbox=%s\nmetacubexd=%s\n' \
+          "${PROXY_CORE:-mihomo}" "${MIHOMO_CONFIG_SOURCE:-}" "${SING_BOX_CONFIG_SOURCE:-}" "${ENABLE_METACUBEXD:-0}"
+        ;;
+      desktop_hyprland)
+        printf 'gpu=%s\nmode=%s\nsddm=%s\nbrowser=%s\nrime=%s\n' \
+          "${GPU_TYPE}" "${HYPRLAND_CONFIG_MODE}" "${ENABLE_SDDM:-0}" "${BROWSER_PACKAGE}/${BROWSER_APP}" "${RIME_SCHEMA}"
+        ;;
+    esac
+  } | sha256sum | awk '{print $1}'
+}
+
+read_state_value() {
+  local file="$1" key="$2"
+  [[ -f "${file}" ]] || return 1
+  awk -F= -v key="${key}" '$1 == key {print substr($0, length(key) + 2); exit}' "${file}"
+}
+
+module_quick_verify() {
+  local module
+  module="$(module_key "$1")"
+  case "${module}" in
+    base) need_cmd git && need_cmd curl && need_cmd jq && need_cmd rg ;;
+    dns) [[ -f /etc/systemd/resolved.conf.d/90-archdevkit-dns.conf ]] ;;
+    archlinuxcn) [[ -r /etc/pacman.conf ]] && grep -q '^\[archlinuxcn\]' /etc/pacman.conf ;;
+    git) need_cmd git && need_cmd gh ;;
+    runtime) need_cmd mise && need_cmd node && need_cmd npm && need_cmd python && need_cmd go ;;
+    nvim) need_cmd nvim && [[ -d "${NVIM_CONFIG_DIR}" ]] ;;
+    docker) need_cmd docker ;;
+    fonts) need_cmd fc-cache ;;
+    shell_zsh) need_cmd zsh && [[ -f "${HOME}/.zshrc" ]] ;;
+    proxy)
+      case "${PROXY_CORE:-mihomo}" in
+        mihomo) need_cmd mihomo && [[ -e "${MIHOMO_CONFIG_FILE:-/etc/mihomo/config.yaml}" ]] ;;
+        sing-box) need_cmd sing-box && [[ -e "${SING_BOX_CONFIG_FILE:-${HOME}/.config/sing-box/config.json}" ]] ;;
+      esac
+      ;;
+    desktop_hyprland) need_cmd Hyprland && [[ -d "${HOME}/.config/hypr" ]] ;;
+    *) return 1 ;;
+  esac
+}
+
+module_state_valid() {
+  local module file expected_hash actual_status actual_hash
+  module="$(module_key "$1")"
+  state_enabled || return 1
+  file="$(module_state_file "${module}")"
+  [[ -f "${file}" ]] || return 1
+
+  actual_status="$(read_state_value "${file}" "status" || true)"
+  actual_hash="$(read_state_value "${file}" "config_hash" || true)"
+  expected_hash="$(module_config_fingerprint "${module}")"
+  [[ "${actual_status}" == "success" && "${actual_hash}" == "${expected_hash}" ]] || return 1
+  module_quick_verify "${module}"
+}
+
+mark_module_installed() {
+  local module file commit
+  module="$(module_key "$1")"
+  state_enabled || return 0
+  [[ "${DRY_RUN:-0}" -eq 1 ]] && return 0
+  state_prepare_dirs
+  file="$(module_state_file "${module}")"
+  commit="$(git -C "${SCRIPT_DIR}" rev-parse --short HEAD 2>/dev/null || printf unknown)"
+  {
+    printf 'module=%s\n' "${module}"
+    printf 'status=success\n'
+    printf 'installed_at=%s\n' "$(date -Iseconds)"
+    printf 'script_commit=%s\n' "${commit}"
+    printf 'config_hash=%s\n' "$(module_config_fingerprint "${module}")"
+  } > "${file}"
+}
+
+mark_skipped() {
+  local module existing
+  module="$(module_key "$1")"
+  for existing in ${MODULE_SKIPPED_LIST}; do
+    [[ "${existing}" == "${module}" ]] && return 0
+  done
+  MODULE_SKIPPED_LIST="${MODULE_SKIPPED_LIST} ${module}"
+}
+
+is_skipped() {
+  local module existing
+  module="$(module_key "$1")"
+  for existing in ${MODULE_SKIPPED_LIST}; do
+    [[ "${existing}" == "${module}" ]] && return 0
+  done
+  return 1
+}
+
+reset_module_state() {
+  local target="$1" module file
+  state_prepare_dirs
+  if [[ "${target}" == "all" ]]; then
+    rm -f "$(state_root)"/modules/*.state 2>/dev/null || true
+    log_info "已清除所有模块状态"
+    return 0
+  fi
+  for module in $(modules_for_target "${target}"); do
+    file="$(module_state_file "${module}")"
+    rm -f "${file}"
+    log_info "已清除模块状态：$(module_display_key "${module}")"
+  done
+}
+
+module_install_func() {
+  case "$(module_key "$1")" in
     base) install_base ;;
     dns) install_dns_env ;;
     archlinuxcn) install_archlinuxcn ;;
@@ -561,31 +879,73 @@ run_command() {
     nvim) install_nvim_env ;;
     docker) install_docker_env ;;
     fonts) install_fonts ;;
-    shell|zsh) install_shell_zsh ;;
-    desktop|hyprland) install_desktop_hyprland ;;
+    shell_zsh) install_shell_zsh ;;
+    desktop_hyprland) install_desktop_hyprland ;;
     proxy) install_proxy_env ;;
-    dev) install_profile_dev ;;
-    workstation) install_profile_workstation ;;
-    *) die "未知命令：$1" ;;
+    *) die "未知模块：$1" ;;
   esac
+}
+
+run_plan() {
+  local modules_text="$1" total index=0 module display
+  state_prepare_dirs
+  total="$(wc -w <<<"${modules_text}" | tr -d ' ')"
+  for module in ${modules_text}; do
+    module="$(module_key "${module}")"
+    display="$(module_display_key "${module}")"
+    index=$((index + 1))
+    if [[ "${FORCE_INSTALL:-0}" -ne 1 ]] && module_state_valid "${module}"; then
+      log_info "[${index}/${total}] ${display} 已安装且校验通过，跳过"
+      mark_done "${module}"
+      mark_skipped "${module}"
+      continue
+    fi
+
+    log_info "[${index}/${total}] 开始处理 ${display}：$(module_desc "${module}")"
+    module_install_func "${module}"
+    mark_module_installed "${module}"
+    log_info "[${index}/${total}] ${display} 处理完成"
+  done
+}
+
+start_run_log() {
+  [[ "${DRY_RUN:-0}" -eq 1 ]] && return 0
+  state_prepare_dirs
+  ARCHDEVKIT_LOG_FILE="$(state_root)/logs/$(date +%Y%m%d-%H%M%S)-${TARGET}.log"
+  exec > >(tee -a "${ARCHDEVKIT_LOG_FILE}") 2>&1
+  log_info "本次安装日志：${ARCHDEVKIT_LOG_FILE}"
+}
+
+preflight_install() {
+  local modules_text="$1"
+  log_info "执行安装前检查"
+  require_arch
+  require_cmd pacman
+  require_cmd sudo
+  if plan_needs_git_command "${modules_text}" && ! need_cmd git; then
+    log_warn "当前缺少 git，相关模块会在执行时按需安装 git 包"
+  fi
+  if plan_has_module "${modules_text}" "proxy" && \
+     [[ "${MIHOMO_CONTROLLER_HOST:-127.0.0.1}" == "0.0.0.0" && -z "${MIHOMO_SECRET:-}" ]]; then
+    log_warn "Mihomo 控制接口监听 0.0.0.0 且 secret 为空；这是当前默认值，但局域网可访问控制 API"
+  fi
 }
 
 show_summary() {
   echo
   echo "----------------------------------------------------------"
   echo "[执行完成]"
+  [[ -n "${ARCHDEVKIT_LOG_FILE:-}" ]] && echo "日志文件: ${ARCHDEVKIT_LOG_FILE}"
   echo "已处理模块:"
   local key display_key
-  for key in base dns archlinuxcn git runtime nvim docker fonts shell_zsh desktop_hyprland proxy; do
-    display_key="${key}"
-    [[ "${key}" == "shell_zsh" ]] && display_key="shell"
-    [[ "${key}" == "desktop_hyprland" ]] && display_key="desktop"
-    is_done "${key}" && echo "  - ${display_key} ($(module_desc "${key}"))"
+  for key in $(all_modules); do
+    display_key="$(module_display_key "${key}")"
+    is_done "${key}" && echo "  - ${display_key} ($(module_desc "${key}"))$(is_skipped "${key}" && printf '：已跳过')"
   done
   echo
   echo "后续建议:"
   local tip_no=0 done_count=0
-  for key in base dns archlinuxcn git runtime nvim docker fonts shell_zsh desktop_hyprland proxy; do
+  for key in $(all_modules); do
     is_done "${key}" && done_count=$((done_count + 1))
   done
   add_summary_tip() {
@@ -602,9 +962,6 @@ show_summary() {
   fi
   if is_done "dns"; then
     add_summary_tip "系统 DNS 已交给 systemd-resolved；查看状态可执行：resolvectl status。"
-    if [[ "${DNS_RESTART_NETWORKMANAGER:-0}" -ne 1 ]]; then
-      add_summary_tip "NetworkManager DNS 后端配置会在 NetworkManager 重启后完全生效。"
-    fi
   fi
   if is_done "git"; then
     add_summary_tip "如需使用 GitHub CLI 登录，执行：gh auth login && gh auth setup-git。"
@@ -633,22 +990,12 @@ show_summary() {
     else
       add_summary_tip "Hyprland 已安装但未启用 SDDM；可用 Hyprland 命令从 tty 手动启动会话。"
     fi
-    if [[ "${ENABLE_FCITX5:-0}" -eq 1 ]]; then
-      add_summary_tip "输入法环境变量已写入；如果 Rime/Fcitx5 未出现，注销重登后再打开 fcitx5-configtool 检查。"
-    fi
-    add_summary_tip "Neovide 需要图形会话；TTY/SSH 中请使用 nvim，Hyprland 会话中可直接运行 neovide。"
   fi
   if is_done "proxy"; then
     case "${PROXY_CORE:-mihomo}" in
       mihomo)
         add_summary_tip "Mihomo 配置文件：${MIHOMO_CONFIG_FILE:-/etc/mihomo/config.yaml}。"
         add_summary_tip "Mihomo 服务状态可用 sudo systemctl status ${MIHOMO_SERVICE_NAME:-mihomo.service} 查看。"
-        if [[ "${ENABLE_METACUBEXD:-0}" -eq 1 ]]; then
-          add_summary_tip "MetaCubeXD 面板地址：http://${MIHOMO_CONTROLLER_HOST:-127.0.0.1}:${MIHOMO_CONTROLLER_PORT:-9090}/ui/。"
-        fi
-        if [[ "${MIHOMO_CONFIG_SOURCE:-}" == "${SCRIPT_DIR}/files/mihomo/config.yaml.tpl" || -z "${MIHOMO_CONFIG_SOURCE:-}" ]]; then
-          add_summary_tip "默认 Mihomo 模板含示例订阅地址；正式使用前请替换 proxy-providers.airport.url。"
-        fi
         ;;
       sing-box)
         add_summary_tip "sing-box 配置文件：${SING_BOX_CONFIG_FILE:-${HOME}/.config/sing-box/config.json}。"
@@ -656,95 +1003,330 @@ show_summary() {
         ;;
     esac
   fi
+  add_summary_tip "查看模块状态可执行：bash install.sh status。"
   if [[ "${tip_no}" -eq 0 ]]; then
     add_summary_tip "没有额外动作需要处理。"
   fi
   echo "----------------------------------------------------------"
 }
 
-confirm_and_run_command() {
-  local cmd="$1" title="$2" modules_text
-  modules_text="$(modules_for_command "${cmd}")"
-  show_plan "${title}" "${modules_text}"
+confirm_and_run_target() {
+  local target="$1" modules_text
+  modules_text="$(modules_for_target "${target}")"
+  show_plan "${target}" "${modules_text}"
   if [[ "${DRY_RUN}" -eq 1 ]]; then
     log_warn "当前为 dry-run 模式，只显示计划，不执行安装"
     return 0
   fi
-  if confirm_yes "是否按以上计划继续安装？"; then
-    run_command "${cmd}"
+  if [[ "${ASSUME_YES:-0}" -eq 1 ]] || confirm_yes "是否按以上计划继续安装？"; then
+    start_run_log
+    preflight_install "${modules_text}"
+    run_plan "${modules_text}"
     show_summary
   else
-    log_warn "已取消安装：${title}"
+    log_warn "已取消安装：${target}"
   fi
 }
 
-show_menu() {
-  while true; do
-    clear
-    echo "----------------------------------------------------------"
-    echo "[ArchDevKit 工作站初始化工具]"
-    echo "1) 安装基础环境"
-    echo "2) 配置系统 DNS"
-    echo "3) 配置 archlinuxcn 源"
-    echo "4) 安装 Git / GitHub 环境"
-    echo "5) 安装 Runtime 环境：系统 Node/npm/Python/Go + mise 版本管理器"
-    echo "6) 安装 Neovim 环境"
-    echo "7) 安装 Docker 环境"
-    echo "8) 安装字体环境"
-    echo "9) 安装 Zsh / Oh My Zsh / Powerlevel10k"
-    echo "10) 安装 Hyprland 桌面环境"
-    echo "11) 安装 Proxy 代理环境（可选：mihomo / MetaCubeXD / sing-box）"
-    echo "12) 安装开发环境组合"
-    echo "13) 安装完整工作站"
-    echo "14) 查看当前配置"
-    echo "0) 退出"
-    echo "----------------------------------------------------------"
-    read -r -p "请选择 [13]: " select_num
-    select_num="${select_num:-13}"
-    case "${select_num}" in
-      1) confirm_and_run_command "base" "基础环境"; pause ;;
-      2) confirm_and_run_command "dns" "系统 DNS"; pause ;;
-      3) confirm_and_run_command "archlinuxcn" "archlinuxcn 源"; pause ;;
-      4) confirm_and_run_command "git" "Git / GitHub 环境"; pause ;;
-      5) confirm_and_run_command "runtime" "Runtime 环境"; pause ;;
-      6) confirm_and_run_command "nvim" "Neovim 环境"; pause ;;
-      7) confirm_and_run_command "docker" "Docker 环境"; pause ;;
-      8) confirm_and_run_command "fonts" "字体环境"; pause ;;
-      9) confirm_and_run_command "shell" "Zsh / Oh My Zsh / Powerlevel10k"; pause ;;
-      10) confirm_and_run_command "desktop" "Hyprland 桌面环境"; pause ;;
-      11) confirm_and_run_command "proxy" "Proxy 代理环境"; pause ;;
-      12) confirm_and_run_command "dev" "开发环境组合"; pause ;;
-      13) confirm_and_run_command "workstation" "完整工作站"; pause ;;
-      14) show_config; pause ;;
-      0) exit 0 ;;
-      *) log_warn "未知选择：${select_num}"; pause ;;
-    esac
+state_status_text() {
+  local module file status hash expected ok display
+  echo "----------------------------------------------------------"
+  echo "[ArchDevKit 模块状态]"
+  echo "状态目录: $(state_root)"
+  echo
+  printf "%-18s %-10s %-10s %s\n" "模块" "状态" "校验" "说明"
+  for module in "$@"; do
+    module="$(module_key "${module}")"
+    display="$(module_display_key "${module}")"
+    file="$(module_state_file "${module}")"
+    status="missing"
+    hash="-"
+    [[ -f "${file}" ]] && status="$(read_state_value "${file}" "status" || echo unknown)"
+    expected="$(module_config_fingerprint "${module}")"
+    if [[ -f "${file}" ]]; then
+      hash="$(read_state_value "${file}" "config_hash" || echo unknown)"
+    fi
+    if [[ -f "${file}" && "${hash}" == "${expected}" ]] && module_quick_verify "${module}"; then
+      ok="ok"
+    elif [[ -f "${file}" && "${hash}" != "${expected}" ]]; then
+      ok="changed"
+    else
+      ok="check-failed"
+    fi
+    [[ "${status}" == "missing" ]] && ok="-"
+    printf "%-18s %-10s %-10s %s\n" "${display}" "${status}" "${ok}" "$(module_desc "${module}")"
   done
+  echo "----------------------------------------------------------"
+}
+
+state_status_json() {
+  local module file status hash expected ok first=1
+  printf '{"stateDir":'; json_string "$(state_root)"; printf ',"modules":['
+  for module in "$@"; do
+    module="$(module_key "${module}")"
+    file="$(module_state_file "${module}")"
+    status="missing"
+    hash="-"
+    [[ -f "${file}" ]] && status="$(read_state_value "${file}" "status" || echo unknown)"
+    expected="$(module_config_fingerprint "${module}")"
+    if [[ -f "${file}" ]]; then
+      hash="$(read_state_value "${file}" "config_hash" || echo unknown)"
+    fi
+    if [[ -f "${file}" && "${hash}" == "${expected}" ]] && module_quick_verify "${module}"; then
+      ok="ok"
+    elif [[ -f "${file}" && "${hash}" != "${expected}" ]]; then
+      ok="changed"
+    else
+      ok="check-failed"
+    fi
+    [[ "${status}" == "missing" ]] && ok="missing"
+    [[ "${first}" -eq 1 ]] || printf ','
+    first=0
+    printf '{"key":'; json_string "${module}"
+    printf ',"name":'; json_string "$(module_display_key "${module}")"
+    printf ',"status":'; json_string "${status}"
+    printf ',"check":'; json_string "${ok}"
+    printf '}'
+  done
+  printf ']}\n'
+}
+
+show_status() {
+  local modules=()
+  if [[ "${TARGET}" == "all" ]]; then
+    read -r -a modules <<<"$(all_modules)"
+  else
+    read -r -a modules <<<"$(modules_for_target "${TARGET}")"
+  fi
+
+  if [[ "${OUTPUT_JSON:-0}" -eq 1 ]]; then
+    state_status_json "${modules[@]}"
+  else
+    state_status_text "${modules[@]}"
+  fi
+}
+
+doctor_check() {
+  local name="$1" status="$2" detail="$3"
+  if [[ "${OUTPUT_JSON:-0}" -eq 1 ]]; then
+    DOCTOR_JSON_ITEMS+=("${name}|${status}|${detail}")
+  else
+    printf "%-18s %-8s %s\n" "${name}" "${status}" "${detail}"
+  fi
+}
+
+resolve_host() {
+  local host="$1"
+  if need_cmd getent; then
+    getent hosts "${host}" >/dev/null 2>&1
+  elif need_cmd dig; then
+    dig +short "${host}" >/dev/null 2>&1
+  elif need_cmd host; then
+    host "${host}" >/dev/null 2>&1
+  else
+    return 1
+  fi
+}
+
+show_doctor() {
+  DOCTOR_JSON_ITEMS=()
+  if [[ "${OUTPUT_JSON:-0}" -ne 1 ]]; then
+    echo "----------------------------------------------------------"
+    echo "[ArchDevKit 环境检查]"
+  fi
+
+  if [[ -f /etc/arch-release ]]; then
+    doctor_check "arch" "ok" "检测到 Arch Linux"
+  else
+    doctor_check "arch" "warn" "未检测到 /etc/arch-release"
+  fi
+  if need_cmd sudo; then
+    doctor_check "sudo" "ok" "sudo 可用"
+  else
+    doctor_check "sudo" "fail" "缺少 sudo"
+  fi
+  if need_cmd pacman; then
+    doctor_check "pacman" "ok" "pacman 可用"
+  else
+    doctor_check "pacman" "fail" "缺少 pacman"
+  fi
+  if need_cmd systemctl; then
+    doctor_check "systemd" "ok" "systemctl 可用"
+  else
+    doctor_check "systemd" "warn" "缺少 systemctl"
+  fi
+  if need_cmd git; then
+    doctor_check "git" "ok" "git 可用"
+  else
+    doctor_check "git" "warn" "git 未安装"
+  fi
+  if resolve_host github.com; then
+    doctor_check "network" "ok" "github.com 可解析"
+  else
+    doctor_check "network" "warn" "github.com 解析失败或网络不可用"
+  fi
+  if [[ -d "$(state_root)" ]]; then
+    doctor_check "state" "ok" "$(state_root)"
+  else
+    doctor_check "state" "warn" "状态目录尚未创建：$(state_root)"
+  fi
+
+  if [[ "${MIHOMO_CONTROLLER_HOST:-127.0.0.1}" == "0.0.0.0" && -z "${MIHOMO_SECRET:-}" ]]; then
+    doctor_check "mihomo-secret" "warn" "控制接口开放到 0.0.0.0 且 secret 为空"
+  else
+    doctor_check "mihomo-secret" "ok" "控制接口配置正常"
+  fi
+
+  if [[ "${OUTPUT_JSON:-0}" -eq 1 ]]; then
+    local item first=1 name status detail
+    printf '{"checks":['
+    for item in "${DOCTOR_JSON_ITEMS[@]}"; do
+      IFS='|' read -r name status detail <<<"${item}"
+      [[ "${first}" -eq 1 ]] || printf ','
+      first=0
+      printf '{"name":'; json_string "${name}"
+      printf ',"status":'; json_string "${status}"
+      printf ',"detail":'; json_string "${detail}"
+      printf '}'
+    done
+    printf ']}\n'
+  else
+    echo "----------------------------------------------------------"
+  fi
+}
+
+validate_config() {
+  case "${PROXY_CORE:-mihomo}" in
+    mihomo|sing-box) ;;
+    *) die "PROXY_CORE 仅支持 mihomo / sing-box：${PROXY_CORE}" ;;
+  esac
+  case "${DNS_OVER_TLS:-no}" in
+    no|opportunistic|yes) ;;
+    *) die "DNS_OVER_TLS 仅支持 no / opportunistic / yes：${DNS_OVER_TLS}" ;;
+  esac
+  case "${GPU_TYPE:-auto}" in
+    auto|intel|amd|nvidia|vmware|virtio|qxl|virtualbox|none) ;;
+    *) die "GPU_TYPE 不支持：${GPU_TYPE}" ;;
+  esac
+  validate_hyprland_config_mode
+}
+
+ask_value_default() {
+  local prompt="$1" current="$2" answer
+  read -r -p "${prompt} [${current}]: " answer
+  printf "%s" "${answer:-${current}}"
+}
+
+ask_bool_default() {
+  local prompt="$1" current="$2" answer
+  if [[ "${current:-0}" -eq 1 ]]; then
+    read -r -p "${prompt} [Y/n]: " answer
+    case "${answer}" in
+      n|N|no|NO|No) printf "0" ;;
+      *) printf "1" ;;
+    esac
+  else
+    read -r -p "${prompt} [y/N]: " answer
+    case "${answer}" in
+      y|Y|yes|YES|Yes) printf "1" ;;
+      *) printf "0" ;;
+    esac
+  fi
+}
+
+ask_choice_default() {
+  local prompt="$1" current="$2" choices="$3" answer choice
+  while true; do
+    read -r -p "${prompt} [${current}] (${choices}): " answer
+    answer="${answer:-${current}}"
+    for choice in ${choices}; do
+      if [[ "${answer}" == "${choice}" ]]; then
+        printf "%s" "${answer}"
+        return 0
+      fi
+    done
+    printf '\033[33m----> 请输入可选值之一：%s\033[0m\n' "${choices}" >&2
+  done
+}
+
+show_menu() {
+  clear || true
+  echo "----------------------------------------------------------"
+  echo "[ArchDevKit 交互式安装向导]"
+  echo "直接回车会使用 install_vars 中的默认值。"
+  echo "----------------------------------------------------------"
+
+  TARGET="$(ask_choice_default "选择安装目标" "${TARGET}" "base dev workstation custom dns archlinuxcn git runtime nvim docker fonts shell desktop proxy")"
+  if [[ "${TARGET}" == "custom" ]]; then
+    TARGET="$(ask_choice_default "选择自定义起点" "workstation" "base dev workstation dns archlinuxcn git runtime nvim docker fonts shell desktop proxy")"
+  fi
+
+  if [[ "${TARGET}" == "dev" || "${TARGET}" == "workstation" ]]; then
+    INSTALL_ARCHLINUXCN="$(ask_bool_default "启用 archlinuxcn 源" "${INSTALL_ARCHLINUXCN:-1}")"
+    ENABLE_DNS="$(ask_bool_default "配置系统 DNS" "${ENABLE_DNS:-1}")"
+    ENABLE_PROXY="$(ask_bool_default "安装 Proxy 模块" "${ENABLE_PROXY:-1}")"
+  fi
+
+  if [[ "${TARGET}" == "proxy" || ( "${TARGET}" =~ ^(dev|workstation)$ && "${ENABLE_PROXY:-0}" -eq 1 ) ]]; then
+    PROXY_CORE="$(ask_choice_default "代理核心" "${PROXY_CORE:-mihomo}" "mihomo sing-box")"
+    PROXY_AUTO_ENABLE_SERVICE="$(ask_bool_default "安装后自动启用代理服务" "${PROXY_AUTO_ENABLE_SERVICE:-1}")"
+    if [[ "${PROXY_CORE}" == "mihomo" ]]; then
+      ENABLE_METACUBEXD="$(ask_bool_default "安装 MetaCubeXD 面板" "${ENABLE_METACUBEXD:-1}")"
+    fi
+  fi
+
+  if [[ "${TARGET}" == "desktop" || "${TARGET}" == "workstation" ]]; then
+    GPU_TYPE="$(ask_choice_default "GPU 类型" "${GPU_TYPE:-auto}" "auto intel amd nvidia vmware virtio qxl virtualbox none")"
+    ENABLE_SDDM="$(ask_bool_default "启用 SDDM 登录管理器" "${ENABLE_SDDM:-1}")"
+    HYPRLAND_CONFIG_MODE="$(ask_choice_default "Hyprland 配置模式" "${HYPRLAND_CONFIG_MODE:-hyprdots}" "hyprdots template skip")"
+    ENABLE_FCITX5="$(ask_bool_default "启用 Fcitx5 输入法" "${ENABLE_FCITX5:-1}")"
+    if [[ "${ENABLE_FCITX5:-0}" -eq 1 ]]; then
+      INPUT_METHOD_ENGINE="$(ask_choice_default "输入法引擎" "${INPUT_METHOD_ENGINE:-rime}" "rime pinyin")"
+      if [[ "${INPUT_METHOD_ENGINE}" == "rime" ]]; then
+        RIME_SCHEMA="$(ask_value_default "Rime 默认方案" "${RIME_SCHEMA:-luna_pinyin_simp}")"
+        INSTALL_RIME_CONFIG="$(ask_bool_default "安装 Rime 配置仓库" "${INSTALL_RIME_CONFIG:-1}")"
+      fi
+    fi
+    BROWSER_PACKAGE="$(ask_value_default "浏览器安装包" "${BROWSER_PACKAGE:-google-chrome}")"
+    BROWSER_APP="$(ask_value_default "浏览器启动命令" "${BROWSER_APP:-google-chrome-stable}")"
+  fi
+
+  validate_config
+  confirm_and_run_target "${TARGET}"
 }
 
 main() {
   parse_args "$@"
-  require_normal_user
-  require_cmd sudo
-  validate_hyprland_config_mode
-  case "${COMMAND}" in
-    menu) show_menu ;;
-    config) show_config ;;
+  validate_config
+
+  case "${ACTION}" in
     help) show_help ;;
-    base) confirm_and_run_command "base" "基础环境" ;;
-    dns) confirm_and_run_command "dns" "系统 DNS" ;;
-    archlinuxcn) confirm_and_run_command "archlinuxcn" "archlinuxcn 源" ;;
-    git) confirm_and_run_command "git" "Git / GitHub 环境" ;;
-    runtime) confirm_and_run_command "runtime" "Runtime 环境" ;;
-    nvim) confirm_and_run_command "nvim" "Neovim 环境" ;;
-    docker) confirm_and_run_command "docker" "Docker 环境" ;;
-    fonts) confirm_and_run_command "fonts" "字体环境" ;;
-    shell|zsh) confirm_and_run_command "shell" "Zsh / Oh My Zsh / Powerlevel10k" ;;
-    desktop|hyprland) confirm_and_run_command "desktop" "Hyprland 桌面环境" ;;
-    proxy) confirm_and_run_command "proxy" "Proxy 代理环境" ;;
-    dev) confirm_and_run_command "dev" "开发环境组合" ;;
-    workstation) confirm_and_run_command "workstation" "完整工作站" ;;
-    *) die "未知命令：${COMMAND}" ;;
+    config) show_config ;;
+    plan)
+      show_plan "${TARGET}" "$(modules_for_target "${TARGET}")"
+      ;;
+    status)
+      show_status
+      ;;
+    doctor)
+      show_doctor
+      ;;
+    reset-state)
+      reset_module_state "${TARGET}"
+      ;;
+    menu)
+      require_normal_user
+      require_cmd sudo
+      show_menu
+      ;;
+    install)
+      require_normal_user
+      require_cmd sudo
+      confirm_and_run_target "${TARGET}"
+      ;;
+    *)
+      die "未知动作：${ACTION}"
+      ;;
   esac
 }
 
