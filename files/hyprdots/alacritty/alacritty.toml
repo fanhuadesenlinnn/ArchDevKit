@@ -26,34 +26,34 @@ family = "Monaco"
 style = "Regular"
 
 [colors.primary]
-background = "#1C1C1C"
-foreground = "#F8F8F2"
+background = "#242424"
+foreground = "#F2F2F2"
 
-# 以下颜色为 ArchDevKit i3 Clear 风格，影响 ANSI 终端颜色。
+# 以下颜色偏向 foot 的明亮深灰终端观感，影响 ANSI 终端颜色。
 [colors.cursor]
-text = "#1C1C1C"
-cursor = "#81A2BE"
+text = "#242424"
+cursor = "#D9E0EE"
 
 [colors.selection]
-text = "#F8F8F2"
-background = "#44475A"
+text = "#F2F2F2"
+background = "#4B5263"
 
 [colors.normal]
-black = "#282A36"
-red = "#FF5555"
-green = "#50FA7B"
-yellow = "#F1FA8C"
-blue = "#81A2BE"
-magenta = "#BB86FC"
-cyan = "#57C7FF"
-white = "#C5C8C6"
+black = "#2E3440"
+red = "#FF6B6B"
+green = "#7DDB79"
+yellow = "#FFD166"
+blue = "#80BFFF"
+magenta = "#C792EA"
+cyan = "#5FD7D7"
+white = "#D9E0EE"
 
 [colors.bright]
-black = "#44475A"
-red = "#FF6E6E"
-green = "#69FF94"
-yellow = "#FFFFA5"
-blue = "#9CC4E4"
-magenta = "#D6ACFF"
-cyan = "#8BE9FD"
-white = "#F8F8F2"
+black = "#5C6370"
+red = "#FF8585"
+green = "#95E88F"
+yellow = "#FFE08A"
+blue = "#9CCBFF"
+magenta = "#DDB6FF"
+cyan = "#7CEAEA"
+white = "#FFFFFF"

@@ -26,13 +26,33 @@ family = "Monaco"
 style = "Regular"
 
 [colors.primary]
-background = "#1C1C1C"
-foreground = "#F8F8F2"
+background = "#242424"
+foreground = "#F2F2F2"
 
 [colors.cursor]
-text = "#1C1C1C"
-cursor = "#81A2BE"
+text = "#242424"
+cursor = "#D9E0EE"
 
 [colors.selection]
-text = "#F8F8F2"
-background = "#44475A"
+text = "#F2F2F2"
+background = "#4B5263"
+
+[colors.normal]
+black = "#2E3440"
+red = "#FF6B6B"
+green = "#7DDB79"
+yellow = "#FFD166"
+blue = "#80BFFF"
+magenta = "#C792EA"
+cyan = "#5FD7D7"
+white = "#D9E0EE"
+
+[colors.bright]
+black = "#5C6370"
+red = "#FF8585"
+green = "#95E88F"
+yellow = "#FFE08A"
+blue = "#9CCBFF"
+magenta = "#DDB6FF"
+cyan = "#7CEAEA"
+white = "#FFFFFF"
