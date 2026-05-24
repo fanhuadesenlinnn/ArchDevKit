@@ -26,11 +26,6 @@ dns_join_values() {
   printf '%s ' "$@"
 }
 
-dns_systemd_unit_exists() {
-  command -v systemctl >/dev/null 2>&1 || return 1
-  systemctl list-unit-files "$1" >/dev/null 2>&1
-}
-
 configure_systemd_resolved_dns() {
   local target="/etc/systemd/resolved.conf.d/90-archdevkit-dns.conf"
   local tmp_file dns_servers fallback_servers
@@ -93,13 +88,13 @@ EOF
 
 enable_systemd_resolved() {
   log_info "启用 systemd-resolved"
-  run_sudo systemctl enable --now systemd-resolved.service
+  enable_system_service systemd-resolved.service
 
-  if [[ "${DNS_RESTART_NETWORKMANAGER:-0}" -eq 1 ]] && dns_systemd_unit_exists NetworkManager.service; then
+  if [[ "${DNS_RESTART_NETWORKMANAGER:-0}" -eq 1 ]] && systemd_system_unit_exists NetworkManager.service; then
     log_warn "按配置重载 NetworkManager，当前网络连接可能短暂中断"
     run_sudo systemctl try-reload-or-restart NetworkManager.service || \
       log_warn "NetworkManager 重载失败，可稍后手动执行：sudo systemctl restart NetworkManager"
-  elif dns_systemd_unit_exists NetworkManager.service; then
+  elif systemd_system_unit_exists NetworkManager.service; then
     log_warn "NetworkManager DNS 后端配置将在服务重启后完全生效"
   fi
 }

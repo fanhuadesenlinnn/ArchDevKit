@@ -61,6 +61,23 @@ bash install.sh status --json | ruby -rjson -e '
   raise "missing modules" unless data.fetch("modules").is_a?(Array)
 '
 
+echo "==> systemd helpers"
+systemd_output="$(
+  DRY_RUN=1 bash -c '
+    set -Eeuo pipefail
+    source lib/common.sh
+    source lib/systemd.sh
+    enable_system_service mihomo.service
+    enable_system_service_on_boot sddm.service
+    enable_user_service archdevkit-sing-box.service
+  '
+)"
+[[ "${systemd_output}" == *"sudo systemctl daemon-reload"* ]] || { echo "missing system daemon-reload"; exit 1; }
+[[ "${systemd_output}" == *"sudo systemctl enable --now mihomo.service"* ]] || { echo "missing system enable"; exit 1; }
+[[ "${systemd_output}" == *"sudo systemctl enable sddm.service"* ]] || { echo "missing boot enable"; exit 1; }
+[[ "${systemd_output}" == *"systemctl --user daemon-reload"* ]] || { echo "missing user daemon-reload"; exit 1; }
+[[ "${systemd_output}" == *"systemctl --user enable --now archdevkit-sing-box.service"* ]] || { echo "missing user enable"; exit 1; }
+
 echo "==> doctor json"
 bash install.sh doctor --json | ruby -rjson -e '
   data = JSON.parse(STDIN.read)

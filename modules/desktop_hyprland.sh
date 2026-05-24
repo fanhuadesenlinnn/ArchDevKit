@@ -525,10 +525,10 @@ EOF
 
 enable_desktop_services() {
   log_info "启用桌面基础服务"
-  run_sudo systemctl enable --now NetworkManager
+  enable_system_service NetworkManager.service
 
   if [[ "${ENABLE_BLUETOOTH:-0}" -eq 1 ]]; then
-    run_sudo systemctl enable --now bluetooth || log_warn "蓝牙服务启用失败，可稍后手动处理"
+    enable_system_service bluetooth.service || log_warn "蓝牙服务启用失败，可稍后手动处理"
   fi
 
   enable_vmware_services_if_needed
@@ -543,12 +543,12 @@ enable_vmware_services_if_needed() {
   ensure_vmware_wayland_input_support
 
   if systemd_system_unit_exists vmtoolsd.service; then
-    run_sudo systemctl enable --now vmtoolsd.service || \
+    enable_system_service vmtoolsd.service || \
       log_warn "vmtoolsd.service 启用失败，可稍后手动处理"
   fi
 
   if systemd_system_unit_exists vmware-vmblock-fuse.service; then
-    run_sudo systemctl enable --now vmware-vmblock-fuse.service || \
+    enable_system_service vmware-vmblock-fuse.service || \
       log_warn "vmware-vmblock-fuse.service 启用失败，可稍后手动处理"
   fi
 }
@@ -580,12 +580,12 @@ enable_qemu_services_if_needed() {
 
   log_info "启用 QEMU/SPICE guest 服务"
   if systemd_system_unit_exists qemu-guest-agent.service; then
-    run_sudo systemctl enable --now qemu-guest-agent.service || \
+    enable_system_service qemu-guest-agent.service || \
       log_warn "qemu-guest-agent.service 启用失败，可稍后手动处理"
   fi
 
   if systemd_system_unit_exists spice-vdagentd.service; then
-    run_sudo systemctl enable --now spice-vdagentd.service || \
+    enable_system_service spice-vdagentd.service || \
       log_warn "spice-vdagentd.service 启用失败，可稍后手动处理"
   fi
 }
@@ -595,7 +595,7 @@ enable_virtualbox_services_if_needed() {
 
   log_info "启用 VirtualBox guest 服务"
   if systemd_system_unit_exists vboxservice.service; then
-    run_sudo systemctl enable --now vboxservice.service || \
+    enable_system_service vboxservice.service || \
       log_warn "vboxservice.service 启用失败，可稍后手动处理"
   fi
 }
@@ -1227,17 +1227,6 @@ ensure_waybar_runtime_files() {
   fi
 }
 
-systemd_system_unit_exists() {
-  local unit="$1"
-  [[ -n "${unit}" ]] || die "systemd unit 名为空"
-
-  [[ -e "/etc/systemd/system/${unit}" ]] && return 0
-  [[ -e "/usr/lib/systemd/system/${unit}" ]] && return 0
-  [[ -e "/lib/systemd/system/${unit}" ]] && return 0
-
-  systemctl list-unit-files "${unit}" --no-legend 2>/dev/null | awk '{print $1}' | grep -Fxq "${unit}"
-}
-
 enable_sddm_if_needed() {
   [[ "${ENABLE_SDDM:-0}" -eq 1 ]] || {
     log_warn "当前配置未启用 SDDM"
@@ -1247,14 +1236,14 @@ enable_sddm_if_needed() {
   if ! systemd_system_unit_exists sddm.service; then
     log_warn "未检测到 sddm.service，尝试安装 SDDM 软件包"
     install_package_or_aur sddm
-    run_sudo systemctl daemon-reload || log_warn "systemd 重新加载失败，可稍后手动执行：sudo systemctl daemon-reload"
+    reload_systemd_system
   fi
 
   systemd_system_unit_exists sddm.service || \
     die "SDDM 软件包安装后仍未找到 sddm.service；请检查 sudo pacman -S sddm 的输出，或使用 --no-sddm 跳过登录管理器启用"
 
   log_info "启用 SDDM 登录管理器"
-  run_sudo systemctl enable sddm.service || \
+  enable_system_service_on_boot sddm.service || \
     die "启用 SDDM 失败；如果已有其他登录管理器占用 display-manager.service，请先禁用它后重试"
   log_warn "SDDM 已设置为开机自启，重启后在登录界面选择 Hyprland"
 }
