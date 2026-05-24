@@ -12,6 +12,8 @@ bash -n install.sh lib/common.sh modules/*.sh
 echo "==> plan json"
 bash install.sh plan workstation --json | ruby -rjson -e '
   data = JSON.parse(STDIN.read)
+  raise "schema mismatch" unless data.fetch("schemaVersion") == "1"
+  raise "command mismatch" unless data.fetch("command") == "plan"
   raise "target mismatch" unless data.fetch("target") == "workstation"
   keys = data.fetch("modules").map { |m| m.fetch("key") }
   %w[base dns proxy desktop_hyprland].each do |key|
@@ -19,15 +21,37 @@ bash install.sh plan workstation --json | ruby -rjson -e '
   end
 '
 
+echo "==> user config file"
+tmp_home="$(mktemp -d)"
+mkdir -p "${tmp_home}/.config/archdevkit"
+cat > "${tmp_home}/.config/archdevkit/config.env" <<'EOF'
+ARCHDEVKIT_DEFAULT_PROFILE=dev
+ENABLE_PROXY=0
+DNS_SERVERS=223.5.5.5,119.29.29.29
+DOCKER_MIRRORS=https://mirror.example.com,https://mirror2.example.com
+EOF
+HOME="${tmp_home}" bash install.sh plan --json | ruby -rjson -e '
+  data = JSON.parse(STDIN.read)
+  raise "target mismatch" unless data.fetch("target") == "dev"
+  keys = data.fetch("modules").map { |m| m.fetch("key") }
+  raise "proxy should be skipped" if keys.include?("proxy")
+  raise "missing dns" unless keys.include?("dns")
+'
+rm -rf "${tmp_home}"
+
 echo "==> status json"
 bash install.sh status --json | ruby -rjson -e '
   data = JSON.parse(STDIN.read)
+  raise "schema mismatch" unless data.fetch("schemaVersion") == "1"
+  raise "command mismatch" unless data.fetch("command") == "status"
   raise "missing modules" unless data.fetch("modules").is_a?(Array)
 '
 
 echo "==> doctor json"
 bash install.sh doctor --json | ruby -rjson -e '
   data = JSON.parse(STDIN.read)
+  raise "schema mismatch" unless data.fetch("schemaVersion") == "1"
+  raise "command mismatch" unless data.fetch("command") == "doctor"
   raise "missing checks" unless data.fetch("checks").is_a?(Array)
 '
 

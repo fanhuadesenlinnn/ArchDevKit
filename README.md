@@ -121,6 +121,8 @@ bash install.sh status --json
 bash install.sh doctor --json
 ```
 
+JSON 输出包含稳定的 `schemaVersion`、`command`、`generatedAt`、`warnings` 字段，便于后续接入脚本或 CI 读取。
+
 安装成功后，模块状态会写入 `ARCHDEVKIT_STATE_DIR`，默认是 `~/.local/state/archdevkit`。后续重复安装同一模块时，如果状态、关键配置指纹和轻量校验都通过，会自动跳过；需要重跑时使用：
 
 ```bash
@@ -132,6 +134,33 @@ bash install.sh reset-state proxy
 
 ```bash
 scripts/test.sh
+```
+
+## 配置分层
+
+配置优先级从低到高为：
+
+```text
+install_vars < 用户配置文件 < 命令行参数
+```
+
+默认会尝试读取 `~/.config/archdevkit/config.env`。该文件不是 shell 脚本，安装器不会直接 `source`，只会读取白名单内的 `KEY=value`，避免用户配置文件执行任意命令。列表值可以用逗号分隔。
+
+示例：
+
+```env
+ARCHDEVKIT_DEFAULT_PROFILE=dev
+ENABLE_PROXY=0
+GPU_TYPE=vmware
+DNS_SERVERS=223.5.5.5,119.29.29.29
+DOCKER_MIRRORS=https://hubproxy.babadafafafafa.cn,https://docker.1panel.live
+```
+
+也可以显式指定或关闭用户配置文件：
+
+```bash
+bash install.sh plan --config-file ./my-machine.env
+bash install.sh plan workstation --no-config-file
 ```
 
 ## 默认网络配置
@@ -172,6 +201,8 @@ bash install.sh nvim --github-proxy https://gh-proxy.com/
 --resume                  保留兼容参数；默认已经会从成功状态跳过已安装模块
 --no-state                不读取或写入模块状态
 --json                    plan/status/doctor 输出 JSON
+--config-file PATH        加载指定用户配置文件
+--no-config-file          不加载用户配置文件
 --no-china                不配置 npm/pip 国内源
 --no-github-proxy         不使用 GitHub 代理
 --github-proxy URL        指定 GitHub 代理
