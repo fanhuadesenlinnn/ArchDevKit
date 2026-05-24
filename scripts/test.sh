@@ -21,6 +21,20 @@ bash install.sh plan workstation --json | ruby -rjson -e '
   end
 '
 
+echo "==> module registry"
+bash install.sh status --json | ruby -rjson -e '
+  data = JSON.parse(STDIN.read)
+  keys = data.fetch("modules").map { |m| m.fetch("key") }
+  expected = %w[base dns archlinuxcn git runtime nvim docker fonts shell_zsh proxy desktop_hyprland]
+  raise "registry mismatch" unless keys == expected
+'
+bash install.sh plan base --json | ruby -rjson -e '
+  data = JSON.parse(STDIN.read)
+  mod = data.fetch("modules").fetch(0)
+  raise "base key mismatch" unless mod.fetch("key") == "base"
+  raise "base description missing" if mod.fetch("description").empty?
+'
+
 echo "==> user config file"
 tmp_home="$(mktemp -d)"
 mkdir -p "${tmp_home}/.config/archdevkit"
