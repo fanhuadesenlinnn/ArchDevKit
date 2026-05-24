@@ -136,6 +136,8 @@ bash install.sh reset-state proxy
 scripts/test.sh
 ```
 
+安装器内部结构和后续扩展规则见 [docs/installer-architecture.md](docs/installer-architecture.md)。
+
 ## 配置分层
 
 配置优先级从低到高为：

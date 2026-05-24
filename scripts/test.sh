@@ -7,7 +7,7 @@ REPO_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 cd "${REPO_DIR}"
 
 echo "==> bash syntax"
-bash -n install.sh lib/common.sh modules/*.sh
+bash -n install.sh lib/*.sh modules/*.sh
 
 echo "==> plan json"
 bash install.sh plan workstation --json | ruby -rjson -e '

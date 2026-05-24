@@ -1,0 +1,48 @@
+# Installer Architecture
+
+ArchDevKit 的安装器按“入口薄、模块深、配置先行”的方向演进。`install.sh` 负责连接用户意图和执行流程；具体能力放在 `lib/` 和 `modules/` 中，避免入口脚本继续膨胀。
+
+## 运行层次
+
+1. `install_vars`
+
+   项目默认值。交互式安装、命令行安装和用户配置文件都以这里为基线。
+
+2. `lib/config.sh`
+
+   加载 `~/.config/archdevkit/config.env`，只接受白名单键；随后统一做布尔值归一化、端口/URL/DNS 等关键配置校验，并收集非阻断提示。
+
+3. `install.sh`
+
+   解析命令、生成安装计划、展示配置和状态、执行模块、记录安装日志。入口脚本不直接维护配置 schema、JSON 序列化或 doctor 检查细节。
+
+4. `modules/*.sh`
+
+   每个安装模块维护自己的安装、验证、依赖判断和配置渲染逻辑。例如 Proxy 模块负责 Mihomo/sing-box，DNS 模块负责 systemd-resolved。
+
+5. `lib/doctor.sh`
+
+   集中维护环境诊断。新增检查项时优先放在这里，避免散落到入口流程。
+
+6. `lib/json.sh`
+
+   统一 JSON 字段和转义逻辑。`plan/status/doctor --json` 都应保持 `schemaVersion`、`command`、`generatedAt` 和 `warnings`。
+
+## 扩展规则
+
+- 新增用户可配置项时，先放入 `install_vars`，再加入 `lib/config.sh` 的白名单和必要校验。
+- 新增安装模块时，模块自身放到 `modules/`，并在 `install.sh` 的模块计划函数里注册目标、描述、影响范围和执行函数。
+- 新增机器可读输出时，复用 `lib/json.sh`，不要在调用点手写未转义 JSON。
+- 新增诊断项时，优先更新 `lib/doctor.sh`，并让 `scripts/test.sh` 至少覆盖 JSON 可解析。
+- 默认行为要同时考虑交互式和命令行安装；能在 `install_vars` 表达的默认值，不应只写死在菜单问题里。
+
+## 测试边界
+
+当前 `scripts/test.sh` 覆盖：
+
+- Bash 语法检查
+- `plan/status/doctor --json` 解析和核心字段
+- 用户配置文件覆盖
+- Mihomo YAML 和 sing-box JSON 模板渲染
+
+后续适合继续补行为测试：模块计划组合、配置校验失败路径、状态跳过和 `--force` 重跑语义。
