@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Runtime 模块
-# 使用 mise 统一管理当前用户的 Node.js / npm / Python / Go 版本。
+# 使用 pacman 安装系统级 Node.js / npm / Python / Go，并配置 mise 作为后续多版本管理器。
 
 setup_mise_shell() {
   log_info "配置 mise shell 初始化"
@@ -145,40 +145,23 @@ install_runtime_env() {
     return 0
   fi
 
-  log_info "开始安装 Runtime 环境：mise + Node.js/npm/Python/Go"
-  pacman_install mise
+  local runtime_packages=(mise nodejs npm python python-pip go)
+  if [[ "${ENABLE_COREPACK:-0}" -eq 1 ]]; then
+    runtime_packages+=(corepack)
+  fi
+
+  log_info "开始安装 Runtime 环境：系统 Node.js/npm/Python/Go + mise 版本管理器"
+  pacman_install "${runtime_packages[@]}"
   setup_mise_shell
   configure_mise_china_mirrors
 
-  log_info "使用 mise 安装 Node.js ${NODE_VERSION}"
-  mise_run use -g node@"${NODE_VERSION}"
-
-  log_info "使用 Node.js 自带 npm 安装 npm ${NPM_VERSION}"
-  mise_run exec -- npm install -g npm@"${NPM_VERSION}"
-
-  log_info "使用 mise 安装 Python ${PYTHON_VERSION}"
-  mise_run use -g python@"${PYTHON_VERSION}"
-
-  log_info "使用 mise 安装 Go ${GO_VERSION}"
-  mise_run use -g go@"${GO_VERSION}"
-
   if [[ "${ENABLE_CHINA_MIRROR:-0}" -eq 1 ]]; then
     log_info "配置 npm 国内源：${NPM_REGISTRY}"
-    mise_run exec -- npm config set registry "${NPM_REGISTRY}"
+    run_cmd npm config set registry "${NPM_REGISTRY}"
 
     log_info "配置 pip 国内源：${PIP_INDEX_URL}"
-    mise_run exec -- python -m pip config set global.index-url "${PIP_INDEX_URL}"
-    mise_run exec -- python -m pip config set install.trusted-host "${PIP_TRUSTED_HOST}" || true
-  fi
-
-  if [[ "${ENABLE_COREPACK:-0}" -eq 1 ]]; then
-    log_info "启用 corepack，方便 pnpm/yarn 项目使用"
-    mise_run exec -- corepack enable || log_warn "corepack 启用失败，可忽略或稍后手动处理"
-  fi
-
-  if [[ "${INSTALL_PYNVIM:-0}" -eq 1 ]]; then
-    log_info "安装 Python pynvim provider"
-    mise_run exec -- python -m pip install -U pynvim
+    run_cmd python -m pip config set global.index-url "${PIP_INDEX_URL}"
+    run_cmd python -m pip config set install.trusted-host "${PIP_TRUSTED_HOST}" || true
   fi
 
   verify_runtime
@@ -188,10 +171,15 @@ install_runtime_env() {
 
 verify_runtime() {
   log_info "验证 Runtime 版本"
-  mise_run exec -- node -v
-  mise_run exec -- npm -v
-  mise_run exec -- python --version
-  mise_run exec -- go version
+  run_cmd mise --version
+  run_cmd node -v
+  run_cmd npm -v
+  run_cmd python --version
+  run_cmd python -m pip --version
+  run_cmd go version
+  if [[ "${ENABLE_COREPACK:-0}" -eq 1 ]]; then
+    run_cmd corepack --version
+  fi
 }
 
 ensure_runtime() {

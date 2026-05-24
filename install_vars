@@ -50,14 +50,13 @@ ARCHLINUXCN_SERVER='https://mirrors.ustc.edu.cn/archlinuxcn/$arch'
 INSTALL_ARCHLINUXCN_MIRRORLIST=1
 
 # =========================
-# Runtime：mise 统一管理开发语言版本
+# Runtime：pacman 安装系统级开发语言，mise 只作为后续多版本管理器
 # =========================
 RUNTIME_MANAGER="mise"
 NODE_VERSION="22"
 NPM_VERSION="11"
 PYTHON_VERSION="3.13"
 GO_VERSION="1.23"
-INSTALL_PYNVIM=1
 ENABLE_COREPACK=1
 
 # =========================
