@@ -167,6 +167,20 @@ aur_helper_command() {
   return 1
 }
 
+install_package_with_current_aur_helper() {
+  local package="$1" helper
+  [[ -n "${package}" ]] || die "AUR 包名为空"
+  helper="$(aur_helper_command)" || return 1
+
+  log_info "通过 ${helper} 安装软件包：${package}"
+  if [[ "${DRY_RUN:-0}" -eq 1 ]]; then
+    echo "+ ${helper} -S --needed --noconfirm ${package}"
+    return 0
+  fi
+
+  "${helper}" -S --needed --noconfirm "${package}"
+}
+
 install_aur_package_via_makepkg() {
   local package="$1" aur_url tmp_dir package_dir
   [[ -n "${package}" ]] || die "AUR 包名为空"
@@ -198,28 +212,64 @@ install_aur_package_via_makepkg() {
   rm -rf "${tmp_dir}"
 }
 
+ensure_preferred_paru_helper() {
+  need_cmd paru && return 0
+
+  if install_package_from_pacman_prefer_archlinuxcn paru; then
+    return 0
+  fi
+  if install_package_with_current_aur_helper paru; then
+    return 0
+  fi
+  install_aur_package_via_makepkg paru
+}
+
+ensure_companion_yay_helper() {
+  need_cmd yay && return 0
+
+  log_info "同时安装 yay，供后续手动使用"
+  if install_package_from_pacman_prefer_archlinuxcn yay; then
+    return 0
+  fi
+  if install_package_with_current_aur_helper yay; then
+    return 0
+  fi
+
+  log_warn "yay 安装失败；安装器内部仍会优先使用 paru"
+  return 1
+}
+
 ensure_aur_helper() {
   local helper
 
-  if helper="$(aur_helper_command)"; then
+  if need_cmd paru; then
+    ensure_companion_yay_helper || true
+    helper="$(aur_helper_command)"
+    log_info "AUR 助手已就绪：${helper}"
+    return 0
+  fi
+  if need_cmd yay; then
+    log_info "检测到 yay，尝试补装优先使用的 paru"
+    if ensure_preferred_paru_helper; then
+      helper="$(aur_helper_command)"
+      log_info "AUR 助手已就绪：${helper}"
+      return 0
+    fi
+    log_warn "paru 安装失败，暂时使用已有 yay"
     return 0
   fi
 
   log_info "未检测到 AUR 助手（paru/yay），开始准备基础 AUR 助手"
 
-  if install_package_from_pacman_prefer_archlinuxcn paru; then
+  if ensure_preferred_paru_helper; then
     helper="paru"
+    ensure_companion_yay_helper || true
   elif install_package_from_pacman_prefer_archlinuxcn yay; then
     helper="yay"
   else
-    log_warn "当前 pacman / archlinuxcn 源未提供 paru/yay，尝试从 AUR 引导安装"
-    if install_aur_package_via_makepkg paru; then
-      helper="paru"
-    elif install_aur_package_via_makepkg yay; then
-      helper="yay"
-    else
-      return 1
-    fi
+    log_warn "当前 pacman / archlinuxcn 源未提供 paru/yay，尝试从 AUR 引导安装 yay"
+    install_aur_package_via_makepkg yay || return 1
+    helper="yay"
   fi
 
   if helper="$(aur_helper_command)"; then
@@ -235,14 +285,8 @@ install_aur_package() {
   [[ -n "${package}" ]] || die "AUR 包名为空"
 
   if ensure_aur_helper; then
-    helper="$(aur_helper_command)"
-    log_info "通过 ${helper} 安装软件包：${package}"
-    if [[ "${DRY_RUN:-0}" -eq 1 ]]; then
-      echo "+ ${helper} -S --needed --noconfirm ${package}"
-      return 0
-    fi
-
-    "${helper}" -S --needed --noconfirm "${package}" && return 0
+    helper="$(aur_helper_command || true)"
+    install_package_with_current_aur_helper "${package}" && return 0
     log_warn "${helper} 安装失败，回退到 makepkg：${package}"
   fi
 

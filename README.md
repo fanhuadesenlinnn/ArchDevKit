@@ -9,7 +9,7 @@ ArchDevKit 是一个面向 Arch Linux 最小化安装后的工作站初始化工
 
 当前模块：
 
-- `base`：基础工具、编译工具、常用命令
+- `base`：基础工具、编译工具、同步工具、排障工具、现代 CLI 工具和 AUR helper
 - `dns`：systemd-resolved 系统 DNS
 - `archlinuxcn`：配置 archlinuxcn 软件源
 - `git`：Git / GitHub CLI 环境
@@ -32,7 +32,7 @@ ArchDevKit 是一个面向 Arch Linux 最小化安装后的工作站初始化工
 - `desktop` 默认安装内置 hyprdots 配置；只有该配置、模板或输入法实际需要字体时才会先安装 `fonts`。
 - 需要 AUR 兜底的软件包会先查当前 pacman 源；如果找不到且启用了 `INSTALL_ARCHLINUXCN=1`，会先配置并尝试使用 `archlinuxcn`。
 - 只有当前 pacman / archlinuxcn 源都没有对应包时，才会最后尝试通过 `paru`/`yay` 安装。
-- 脚本会优先复用系统已有的 `paru`/`yay`；若都不存在，会自动安装一个作为基础 AUR 能力，再继续安装目标软件包。
+- 脚本会优先复用或安装 `paru` 作为内部 AUR helper，并同时尝试安装 `yay` 供后续手动使用；若 `paru` 不可用，才会临时使用 `yay` 或回退到 `makepkg`。
 - `paru`/`yay` 不可用时，才会回退到 `git clone + makepkg`。
 
 `base`、`dev`、`workstation` 仍然是显式套餐：选择它们时会按套餐目标安装对应模块。`dev` 默认等于 `base + archlinuxcn + dns + git + runtime + nvim + fonts + shell + proxy`；`workstation` 默认等于 `dev + desktop`。Docker 仍可通过 `bash install.sh docker` 单独安装。

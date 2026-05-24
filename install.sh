@@ -370,6 +370,7 @@ module_impacts() {
   case "$(module_key "$1")" in
     base)
       echo "刷新 pacman 数据库并安装基础命令行工具"
+      echo "paru/yay AUR 助手"
       ;;
     dns)
       echo "/etc/systemd/resolved.conf.d/90-archdevkit-dns.conf"
@@ -621,7 +622,8 @@ show_plan() {
   echo "  软件安装:         按模块批量执行 pacman -S --needed，缺包再兜底 archlinuxcn/AUR"
   if plan_has_module "${modules_text}" "base"; then
     echo "  系统更新:         base 模块会刷新并执行 pacman -Syu"
-    echo "  基础工具:         base-devel git curl wget unzip tar gzip xz jq ripgrep fd fzf openssh"
+    echo "  基础工具:         $(base_packages)"
+    echo "  AUR 助手:         优先使用 paru，同时安装 yay 供手动使用"
   fi
   if plan_has_module "${modules_text}" "archlinuxcn"; then
     echo "  archlinuxcn 源:   ${ARCHLINUXCN_SERVER}"
@@ -741,6 +743,10 @@ module_config_fingerprint() {
   {
     printf 'module=%s\n' "${module}"
     case "${module}" in
+      base)
+        printf 'packages=%s\n' "$(base_packages)"
+        printf 'aur_helpers=paru+yay\n'
+        ;;
       dns)
         printf 'dns=%s\n' "${DNS_SERVERS[*]}"
         printf 'fallback=%s\n' "${DNS_FALLBACK_SERVERS[*]} ${DNS_FOREIGN_FALLBACK_SERVERS[*]}"
@@ -1158,7 +1164,7 @@ ask_choice_default() {
 menu_target_overview() {
   echo
   echo "[可安装模块]"
-  printf "  %-12s %s\n" "base" "基础环境：base-devel、curl、wget、jq、rg、fd、fzf、openssh 等常用工具"
+  printf "  %-12s %s\n" "base" "基础环境：编译依赖、同步工具、网络/IO 排障、现代 CLI 工具和 paru/yay"
   printf "  %-12s %s\n" "dns" "系统 DNS：配置 systemd-resolved、NetworkManager DNS 后端和国内/国外 fallback DNS"
   printf "  %-12s %s\n" "archlinuxcn" "软件源：启用 archlinuxcn 源、keyring 和可选 mirrorlist"
   printf "  %-12s %s\n" "git" "Git 环境：安装 git、gh、openssh，并写入基础 Git 配置"
