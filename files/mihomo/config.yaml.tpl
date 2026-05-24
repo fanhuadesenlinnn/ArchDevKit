@@ -17,9 +17,8 @@ log-level: info
 ipv6: true
 unified-delay: true
 tcp-concurrent: true
-global-client-fingerprint: chrome
 
-# 外部控制接口。默认仅本机访问，避免局域网裸露控制 API。
+# 外部控制接口。建议仅本机访问；如需局域网访问，请务必设置 secret。
 external-controller: __MIHOMO_CONTROLLER_HOST__:__MIHOMO_CONTROLLER_PORT__
 # MetaCubeXD 安装后由 Mihomo 托管：http://127.0.0.1:9090/ui/
 __METACUBEXD_EXTERNAL_UI_LINE__
@@ -340,160 +339,160 @@ rule-providers:
   reject:
     type: http
     behavior: domain
-    url: https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/reject.txt
+    url: __MIHOMO_RULE_PROVIDER_URL_PREFIX__https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/reject.txt
     path: ./ruleset/reject.yaml
     interval: 86400
 
   private:
     type: http
     behavior: domain
-    url: https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/private.txt
+    url: __MIHOMO_RULE_PROVIDER_URL_PREFIX__https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/private.txt
     path: ./ruleset/private.yaml
     interval: 86400
 
   direct:
     type: http
     behavior: domain
-    url: https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/direct.txt
+    url: __MIHOMO_RULE_PROVIDER_URL_PREFIX__https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/direct.txt
     path: ./ruleset/direct.yaml
     interval: 86400
 
   proxy:
     type: http
     behavior: domain
-    url: https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/proxy.txt
+    url: __MIHOMO_RULE_PROVIDER_URL_PREFIX__https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/proxy.txt
     path: ./ruleset/proxy.yaml
     interval: 86400
 
   gfw:
     type: http
     behavior: domain
-    url: https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/gfw.txt
+    url: __MIHOMO_RULE_PROVIDER_URL_PREFIX__https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/gfw.txt
     path: ./ruleset/gfw.yaml
     interval: 86400
 
   greatfire:
     type: http
     behavior: domain
-    url: https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/greatfire.txt
+    url: __MIHOMO_RULE_PROVIDER_URL_PREFIX__https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/greatfire.txt
     path: ./ruleset/greatfire.yaml
     interval: 86400
 
   tld-not-cn:
     type: http
     behavior: domain
-    url: https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/tld-not-cn.txt
+    url: __MIHOMO_RULE_PROVIDER_URL_PREFIX__https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/tld-not-cn.txt
     path: ./ruleset/tld-not-cn.yaml
     interval: 86400
 
   telegramcidr:
     type: http
     behavior: ipcidr
-    url: https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/telegramcidr.txt
+    url: __MIHOMO_RULE_PROVIDER_URL_PREFIX__https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/telegramcidr.txt
     path: ./ruleset/telegramcidr.yaml
     interval: 86400
 
   cncidr:
     type: http
     behavior: ipcidr
-    url: https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/cncidr.txt
+    url: __MIHOMO_RULE_PROVIDER_URL_PREFIX__https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/cncidr.txt
     path: ./ruleset/cncidr.yaml
     interval: 86400
 
   lancidr:
     type: http
     behavior: ipcidr
-    url: https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/lancidr.txt
+    url: __MIHOMO_RULE_PROVIDER_URL_PREFIX__https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/lancidr.txt
     path: ./ruleset/lancidr.yaml
     interval: 86400
 
   applications:
     type: http
     behavior: classical
-    url: https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/applications.txt
+    url: __MIHOMO_RULE_PROVIDER_URL_PREFIX__https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/applications.txt
     path: ./ruleset/applications.yaml
     interval: 86400
 
   icloud:
     type: http
     behavior: domain
-    url: https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/icloud.txt
+    url: __MIHOMO_RULE_PROVIDER_URL_PREFIX__https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/icloud.txt
     path: ./ruleset/icloud.yaml
     interval: 86400
 
   apple:
     type: http
     behavior: domain
-    url: https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/apple.txt
+    url: __MIHOMO_RULE_PROVIDER_URL_PREFIX__https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/apple.txt
     path: ./ruleset/apple.yaml
     interval: 86400
 
   httpdns:
     type: http
     behavior: classical
-    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/BlockHttpDNS/BlockHttpDNS.yaml
+    url: __MIHOMO_RULE_PROVIDER_URL_PREFIX__https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/BlockHttpDNS/BlockHttpDNS.yaml
     path: ./ruleset/block-httpdns.yaml
     interval: 86400
 
   ai:
     type: http
     behavior: classical
-    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/OpenAI/OpenAI.yaml
+    url: __MIHOMO_RULE_PROVIDER_URL_PREFIX__https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/OpenAI/OpenAI.yaml
     path: ./ruleset/ai.yaml
     interval: 86400
 
   youtube:
     type: http
     behavior: classical
-    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/YouTube/YouTube.yaml
+    url: __MIHOMO_RULE_PROVIDER_URL_PREFIX__https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/YouTube/YouTube.yaml
     path: ./ruleset/youtube.yaml
     interval: 86400
 
   netflix:
     type: http
     behavior: classical
-    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Netflix/Netflix.yaml
+    url: __MIHOMO_RULE_PROVIDER_URL_PREFIX__https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Netflix/Netflix.yaml
     path: ./ruleset/netflix.yaml
     interval: 86400
 
   disney:
     type: http
     behavior: classical
-    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Disney/Disney.yaml
+    url: __MIHOMO_RULE_PROVIDER_URL_PREFIX__https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Disney/Disney.yaml
     path: ./ruleset/disney.yaml
     interval: 86400
 
   spotify:
     type: http
     behavior: classical
-    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Spotify/Spotify.yaml
+    url: __MIHOMO_RULE_PROVIDER_URL_PREFIX__https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Spotify/Spotify.yaml
     path: ./ruleset/spotify.yaml
     interval: 86400
 
   telegram:
     type: http
     behavior: classical
-    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Telegram/Telegram.yaml
+    url: __MIHOMO_RULE_PROVIDER_URL_PREFIX__https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Telegram/Telegram.yaml
     path: ./ruleset/telegram.yaml
     interval: 86400
 
   github:
     type: http
     behavior: classical
-    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/GitHub/GitHub.yaml
+    url: __MIHOMO_RULE_PROVIDER_URL_PREFIX__https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/GitHub/GitHub.yaml
     path: ./ruleset/github.yaml
     interval: 86400
 
   microsoft:
     type: http
     behavior: classical
-    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Microsoft/Microsoft.yaml
+    url: __MIHOMO_RULE_PROVIDER_URL_PREFIX__https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Microsoft/Microsoft.yaml
     path: ./ruleset/microsoft.yaml
     interval: 86400
 
   steam:
     type: http
     behavior: classical
-    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Steam/Steam.yaml
+    url: __MIHOMO_RULE_PROVIDER_URL_PREFIX__https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Steam/Steam.yaml
     path: ./ruleset/steam.yaml
     interval: 86400

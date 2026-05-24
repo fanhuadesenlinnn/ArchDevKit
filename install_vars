@@ -23,7 +23,7 @@ GO_DOWNLOAD_MIRROR="https://mirrors.aliyun.com/golang"
 GO_REPO_URL="https://github.com/golang/go"
 PYTHON_BUILD_MIRROR_URL="https://registry.npmmirror.com/-/binary/python/"
 PYENV_REPO_URL="https://github.com/pyenv/pyenv.git"
-ENABLE_MISE_GITHUB_URL_REPLACEMENT=1
+ENABLE_MISE_GITHUB_URL_REPLACEMENT=1 # 仅用于临时 git insteadOf，不启用 broad MISE_URL_REPLACEMENTS
 
 # =========================
 # DNS：systemd-resolved 系统解析基线
@@ -164,12 +164,13 @@ MIHOMO_SERVICE_NAME="mihomo.service"
 MIHOMO_CONFIG_DIR="/etc/mihomo"
 MIHOMO_CONFIG_FILE="${MIHOMO_CONFIG_DIR}/config.yaml"
 MIHOMO_CONFIG_SOURCE="${SCRIPT_DIR}/files/mihomo/config.yaml.tpl" # 本地 config.yaml/.tpl 或 URL；为空则渲染默认模板
+MIHOMO_RULE_PROVIDER_URL_PREFIX="${GITHUB_PROXY}" # 为空=规则源直连；默认配合 GitHub 代理拉取 raw.githubusercontent.com 规则
 MIHOMO_MIXED_PORT=7890
 MIHOMO_ALLOW_LAN=0
-MIHOMO_BIND_ADDRESS="127.0.0.1"
-MIHOMO_CONTROLLER_HOST="127.0.0.1"
+MIHOMO_BIND_ADDRESS="0.0.0.0"
+MIHOMO_CONTROLLER_HOST="0.0.0.0"
 MIHOMO_CONTROLLER_PORT=9090
-MIHOMO_DNS_LISTEN="127.0.0.1:1053"
+MIHOMO_DNS_LISTEN="0.0.0.0:1053"
 MIHOMO_SECRET=""
 MIHOMO_STATE_DIR="/var/lib/mihomo"
 MIHOMO_EXTERNAL_UI_DIR="${MIHOMO_STATE_DIR}/ui"

@@ -98,7 +98,7 @@ bash install.sh config
 - mise Python 的 pyenv 仓库默认走已配置的 GitHub 代理
 - GitHub 代理：`https://hubproxy.babadafafafafa.cn/`
 
-runtime 模块会同时写入 `~/.config/archdevkit/mise-china.env`，并让 `~/.bashrc` / `~/.zshrc` 自动加载这些环境变量。这样后续手动执行 `mise use -g python@3.13`、`mise use -g go@1.23` 时，也会继续优先使用国内可用的下载源；如果当前 mise 版本不支持某个 setting，脚本会跳过写入该 setting，改用环境变量兜底，避免出现 `Unknown setting` 报错。
+runtime 模块会同时写入 `~/.config/archdevkit/mise-china.env`，并让 `~/.bashrc` / `~/.zshrc` 自动加载这些环境变量。这样后续手动执行 `mise use -g python@3.13`、`mise use -g go@1.23` 时，也会继续优先使用国内可用的下载源；如果当前 mise 版本不支持某个 setting，脚本会跳过写入该 setting，改用环境变量兜底，避免出现 `Unknown setting` 报错。脚本不会再默认注入 broad `MISE_URL_REPLACEMENTS`，避免 Go / Python 的 GitHub URL 被二次代理后出现 404。
 
 关闭 GitHub 代理：
 
@@ -225,6 +225,7 @@ MIHOMO_CONFIG_DIR="/etc/mihomo"
 MIHOMO_CONFIG_FILE="${MIHOMO_CONFIG_DIR}/config.yaml"
 MIHOMO_STATE_DIR="/var/lib/mihomo"
 MIHOMO_EXTERNAL_UI_DIR="${MIHOMO_STATE_DIR}/ui"
+MIHOMO_RULE_PROVIDER_URL_PREFIX="${GITHUB_PROXY}"
 
 ENABLE_METACUBEXD=1 # 1=安装 MetaCubeXD 面板，0=不安装面板
 ```
@@ -259,6 +260,7 @@ Mihomo 会按系统级服务方式安装：
 
 默认 Mihomo 配置模板来自 `files/mihomo/config.yaml.tpl`，基于日常大陆网络、AI 服务、流媒体、GitHub、游戏平台、广告拦截和懒猫微服兼容整理。
 模板只保留一个机场订阅示例：`proxy-providers.airport.url`。不在模板里写任何示例节点，所有节点都通过订阅连接拉取到 `proxy-providers` 后供策略组使用。
+规则提供者默认会把 `raw.githubusercontent.com` 地址加上 `MIHOMO_RULE_PROVIDER_URL_PREFIX`，减少中国大陆网络下规则更新失败；如果希望直连规则源，可把该变量设为空。
 默认 sing-box 配置模板来自 `files/sing-box/config.json.tpl`。
 
 MetaCubeXD 面板安装后会复制到 `MIHOMO_EXTERNAL_UI_DIR`，默认是 `/var/lib/mihomo/ui`，生成的 Mihomo 配置中 `external-ui` 也会指向这个目录。
@@ -275,9 +277,11 @@ bash install.sh proxy --sing-box-config /path/to/config.json
 
 安装后常用地址：
 
-- Mihomo mixed-port：`127.0.0.1:7890`
-- Mihomo 控制接口：`http://127.0.0.1:9090`
-- MetaCubeXD 面板：`http://127.0.0.1:9090/ui/`
+- Mihomo mixed-port：由 `MIHOMO_BIND_ADDRESS` 和 `MIHOMO_MIXED_PORT` 决定
+- Mihomo 控制接口：由 `MIHOMO_CONTROLLER_HOST` 和 `MIHOMO_CONTROLLER_PORT` 决定
+- MetaCubeXD 面板：`http://${MIHOMO_CONTROLLER_HOST}:${MIHOMO_CONTROLLER_PORT}/ui/`
+
+如果把 `MIHOMO_CONTROLLER_HOST` 改成 `0.0.0.0` 对局域网开放，建议同时设置 `MIHOMO_SECRET`，避免控制 API 裸露。
 
 ## 设计原则
 

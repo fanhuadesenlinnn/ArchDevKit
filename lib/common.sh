@@ -393,8 +393,13 @@ normalize_url_slash() {
 
 github_proxy_url() {
   local url="$1" proxy
-  if [[ "${ENABLE_GITHUB_PROXY:-0}" -eq 1 && "${url}" == https://github.com/* ]]; then
+  if [[ "${ENABLE_GITHUB_PROXY:-0}" -eq 1 && -n "${GITHUB_PROXY:-}" && \
+    ( "${url}" == https://github.com/* || "${url}" == https://raw.githubusercontent.com/* ) ]]; then
     proxy="$(normalize_url_slash "${GITHUB_PROXY}")"
+    [[ "${url}" == "${proxy}"* ]] && {
+      printf '%s' "${url}"
+      return 0
+    }
     printf '%s%s' "${proxy}" "${url}"
   else
     printf '%s' "${url}"

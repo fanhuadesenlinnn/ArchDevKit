@@ -30,30 +30,32 @@ proxy_needs_archlinuxcn() {
 }
 
 proxy_config_source_to_file() {
-  local source="$1" target="$2" tmp_file
+  local source="$1" target="$2" actual_source tmp_file
   [[ -n "${target}" ]] || die "代理配置目标文件为空"
 
   mkdir -p "$(dirname "${target}")"
   [[ -n "${source}" ]] || return 1
+  actual_source="$(github_proxy_url "${source}")"
 
   if [[ "${DRY_RUN:-0}" -eq 1 ]]; then
-    echo "+ install config ${source} -> ${target}"
+    echo "+ install config ${actual_source} -> ${target}"
     return 0
   fi
 
   tmp_file="$(mktemp)"
-  case "${source}" in
+  case "${actual_source}" in
     http://*|https://*)
       ensure_curl_command
       log_info "下载代理配置：${source}"
-      curl -fL "${source}" -o "${tmp_file}" || {
+      [[ "${source}" != "${actual_source}" ]] && log_info "实际下载地址：${actual_source}"
+      curl -fL "${actual_source}" -o "${tmp_file}" || {
         rm -f "${tmp_file}"
         die "下载代理配置失败：${source}"
       }
       ;;
     *)
-      [[ -f "${source}" ]] || die "代理配置文件不存在：${source}"
-      cp -a "${source}" "${tmp_file}"
+      [[ -f "${actual_source}" ]] || die "代理配置文件不存在：${source}"
+      cp -a "${actual_source}" "${tmp_file}"
       ;;
   esac
 
@@ -63,28 +65,30 @@ proxy_config_source_to_file() {
 }
 
 proxy_config_source_to_root_file() {
-  local source="$1" target="$2" mode="${3:-0600}" tmp_file
+  local source="$1" target="$2" mode="${3:-0600}" actual_source tmp_file
   [[ -n "${target}" ]] || die "代理配置目标文件为空"
   [[ -n "${source}" ]] || return 1
+  actual_source="$(github_proxy_url "${source}")"
 
   if [[ "${DRY_RUN:-0}" -eq 1 ]]; then
-    echo "+ sudo install config ${source} -> ${target}"
+    echo "+ sudo install config ${actual_source} -> ${target}"
     return 0
   fi
 
   tmp_file="$(mktemp)"
-  case "${source}" in
+  case "${actual_source}" in
     http://*|https://*)
       ensure_curl_command
       log_info "下载代理配置：${source}"
-      curl -fL "${source}" -o "${tmp_file}" || {
+      [[ "${source}" != "${actual_source}" ]] && log_info "实际下载地址：${actual_source}"
+      curl -fL "${actual_source}" -o "${tmp_file}" || {
         rm -f "${tmp_file}"
         die "下载代理配置失败：${source}"
       }
       ;;
     *)
-      [[ -f "${source}" ]] || die "代理配置文件不存在：${source}"
-      cp -a "${source}" "${tmp_file}"
+      [[ -f "${actual_source}" ]] || die "代理配置文件不存在：${source}"
+      cp -a "${actual_source}" "${tmp_file}"
       ;;
   esac
 
@@ -194,6 +198,20 @@ mihomo_safe_external_ui_dir() {
   esac
 }
 
+mihomo_rule_provider_url_prefix() {
+  local prefix="${MIHOMO_RULE_PROVIDER_URL_PREFIX:-}"
+  [[ "${ENABLE_GITHUB_PROXY:-0}" -eq 1 ]] || return 0
+  [[ -n "${prefix}" ]] || return 0
+  normalize_url_slash "${prefix}"
+}
+
+warn_mihomo_exposure() {
+  if [[ "${MIHOMO_CONTROLLER_HOST:-127.0.0.1}" == "0.0.0.0" && -z "${MIHOMO_SECRET:-}" ]]; then
+    log_warn "Mihomo 控制接口监听 0.0.0.0 且 MIHOMO_SECRET 为空，局域网可访问控制 API"
+    log_warn "如需开放 MetaCubeXD，建议在 install_vars 设置 MIHOMO_SECRET"
+  fi
+}
+
 render_proxy_template() {
   local template="$1" target="$2" mode="${3:-0600}" tmp_file
   shift 3 || true
@@ -238,10 +256,12 @@ render_proxy_template_root() {
 
 render_mihomo_config_template() {
   local template="$1" target="$2"
-  local allow_lan secret external_ui_line external_ui_dir
+  local allow_lan secret external_ui_line external_ui_dir rule_provider_prefix
 
+  warn_mihomo_exposure
   allow_lan="$(sed_escape_replacement "$(bool_to_yaml "${MIHOMO_ALLOW_LAN:-0}")")"
   secret="$(sed_escape_replacement "$(quote_yaml_string "${MIHOMO_SECRET:-}")")"
+  rule_provider_prefix="$(sed_escape_replacement "$(mihomo_rule_provider_url_prefix)")"
   if [[ "${ENABLE_METACUBEXD:-0}" -eq 1 ]]; then
     external_ui_dir="$(mihomo_safe_external_ui_dir)"
     external_ui_line="$(sed_escape_replacement "external-ui: ${external_ui_dir}")"
@@ -257,6 +277,7 @@ render_mihomo_config_template() {
     -e "s/__MIHOMO_CONTROLLER_PORT__/$(sed_escape_replacement "${MIHOMO_CONTROLLER_PORT:-9090}")/g" \
     -e "s/__MIHOMO_DNS_LISTEN__/$(sed_escape_replacement "${MIHOMO_DNS_LISTEN:-127.0.0.1:1053}")/g" \
     -e "s/__MIHOMO_SECRET_YAML__/${secret}/g" \
+    -e "s/__MIHOMO_RULE_PROVIDER_URL_PREFIX__/${rule_provider_prefix}/g" \
     -e "s/__METACUBEXD_EXTERNAL_UI_LINE__/${external_ui_line}/g"
 }
 
@@ -574,8 +595,9 @@ verify_proxy_env() {
       log_info "Mihomo 配置目录：${MIHOMO_CONFIG_DIR:-/etc/mihomo}"
       log_info "Mihomo 配置文件：${MIHOMO_CONFIG_FILE:-/etc/mihomo/config.yaml}"
       log_info "Mihomo 系统服务：${MIHOMO_SERVICE_NAME:-mihomo.service}"
-      log_info "Mihomo mixed-port：127.0.0.1:${MIHOMO_MIXED_PORT:-7890}"
+      log_info "Mihomo mixed-port：${MIHOMO_BIND_ADDRESS:-127.0.0.1}:${MIHOMO_MIXED_PORT:-7890}"
       log_info "Mihomo 控制接口：http://${MIHOMO_CONTROLLER_HOST:-127.0.0.1}:${MIHOMO_CONTROLLER_PORT:-9090}"
+      log_info "Mihomo 规则源前缀：$(mihomo_rule_provider_url_prefix)"
       if [[ "${ENABLE_METACUBEXD:-0}" -eq 1 ]]; then
         log_info "MetaCubeXD 面板由 Mihomo 托管：http://${MIHOMO_CONTROLLER_HOST:-127.0.0.1}:${MIHOMO_CONTROLLER_PORT:-9090}/ui/"
         log_info "MetaCubeXD UI 目录：$(mihomo_safe_external_ui_dir)"
