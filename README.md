@@ -10,6 +10,7 @@ ArchDevKit 是一个面向 Arch Linux 最小化安装后的工作站初始化工
 当前模块：
 
 - `base`：基础工具、编译工具、常用命令
+- `dns`：systemd-resolved 系统 DNS
 - `archlinuxcn`：配置 archlinuxcn 软件源
 - `git`：Git / GitHub CLI 环境
 - `runtime`：mise + Node.js / npm / Python / Go
@@ -34,7 +35,7 @@ ArchDevKit 是一个面向 Arch Linux 最小化安装后的工作站初始化工
 - 脚本会优先复用系统已有的 `paru`/`yay`；若都不存在，会自动安装一个作为基础 AUR 能力，再继续安装目标软件包。
 - `paru`/`yay` 不可用时，才会回退到 `git clone + makepkg`。
 
-`base`、`dev`、`workstation` 仍然是显式套餐：选择它们时会按套餐目标安装对应模块。
+`base`、`dev`、`workstation` 仍然是显式套餐：选择它们时会按套餐目标安装对应模块。`dev` 默认等于 `base + archlinuxcn + dns + git + runtime + nvim + fonts + shell + proxy`；`workstation` 默认等于 `dev + desktop`。Docker 仍可通过 `bash install.sh docker` 单独安装。
 
 ## 快速开始
 
@@ -113,6 +114,9 @@ bash install.sh nvim --github-proxy https://gh-proxy.com/
 --no-china                不配置 npm/pip 国内源
 --no-github-proxy         不使用 GitHub 代理
 --github-proxy URL        指定 GitHub 代理
+--dns                     dev/workstation 中配置系统 DNS
+--no-dns                  dev/workstation 中跳过系统 DNS
+--dns-over-tls MODE       systemd-resolved DNSOverTLS：no / opportunistic / yes
 --repo URL                指定 Neovim 配置仓库
 --branch NAME             指定 Neovim 配置分支
 --no-plugin-sync          不同步 Neovim 插件
@@ -136,8 +140,8 @@ bash install.sh nvim --github-proxy https://gh-proxy.com/
 --rime-repo URL           指定 Rime 配置仓库
 --rime-branch NAME        指定 Rime 配置分支
 --no-rime-config          不安装 Rime 配置仓库
---with-proxy              workstation 中安装 Proxy 模块
---no-proxy                workstation 中不安装 Proxy 模块
+--with-proxy              dev/workstation 中安装 Proxy 模块
+--no-proxy                dev/workstation 中不安装 Proxy 模块
 --proxy-core NAME         指定代理核心：mihomo / sing-box
 --no-metacubexd           不安装 MetaCubeXD 面板
 --mihomo-config PATH/URL  指定 Mihomo 配置文件或 URL
@@ -150,7 +154,7 @@ Hyprland 桌面默认使用内置的 hyprdots 配置，来源为 `fanhuadesenlin
 
 Hyprland 桌面默认安装 Google Chrome，不安装 Firefox。默认浏览器包为 `google-chrome`，启动命令为 `google-chrome-stable`；如果当前 pacman 源没有该包，脚本会先尝试按配置启用 `archlinuxcn`，仍不可用时会通过 `paru`/`yay` 安装。
 
-Hyprland 桌面终端默认使用 `~/.local/bin/archdevkit-terminal` 统一入口，优先启动 Alacritty，并以 foot 作为兜底；脚本只安装和维护这两套终端相关配置。
+Hyprland 桌面终端默认使用 `~/.local/bin/archdevkit-terminal` 统一入口，优先启动 Alacritty，并以 foot 作为兜底；脚本只安装和维护这两套终端相关配置。桌面模块会安装 Neovide，并写入 `~/.local/bin/neovide` 包装命令：在 Hyprland 会话中正常启动；如果从 TTY/SSH 这类没有 Wayland/X11 显示环境的 shell 里启动，会给出明确提示并建议改用 `nvim`。
 
 桌面主题默认采用偏深蓝灰的柔和暗色配置，抬高 Waybar、Rofi、Dunst、Alacritty、GTK 和锁屏文字的可读性：背景避免纯黑，正文使用偏暖浅色，强调色以低饱和蓝/青/绿为主，尽量保证文字清晰但不形成刺眼的高反差。
 
@@ -178,12 +182,31 @@ bash install.sh desktop --no-rime-config
 
 原有轻量模板仍保留在 `files/hyprland/`，可用 `--hyprland-config-mode template` 显式启用；如果只想安装软件包、不写入配置，可以使用 `--hyprland-config-mode skip`。
 
-## Proxy 模块
+## DNS 模块
 
-Proxy 是可选模块，默认配置为：
+DNS 模块默认使用 `systemd-resolved` 作为系统解析器，并把 `/etc/resolv.conf` 指向 `/run/systemd/resolve/stub-resolv.conf`。默认上游偏向中国大陆网络稳定性：阿里公共 DNS `223.5.5.5` / `223.6.6.6`、DNSPod `119.29.29.29`、114DNS `114.114.114.114`，国内 fallback 为 `180.76.76.76` 和 `114.114.115.115`，国外末位 fallback 为 Cloudflare `1.1.1.1` 和 Google `8.8.8.8`。
+
+系统 DNS 默认不指向 Mihomo 的 `127.0.0.1:1053`，避免代理服务异常时整机 DNS 失效。`systemd-resolved` 这里只做系统级兜底解析，不负责国内/国外规则分流；Mihomo 模板内部仍保留 DoH/Fake-IP 分流 DNS，用于代理流量解析。
+
+单独配置系统 DNS：
 
 ```bash
-ENABLE_PROXY=0 # 1=随 workstation 安装，0=不随 workstation 安装；直接执行 proxy 命令不受此项限制
+bash install.sh dns
+```
+
+`dev` 和 `workstation` 默认包含 DNS 模块；临时跳过可使用：
+
+```bash
+bash install.sh dev --no-dns
+bash install.sh workstation --no-dns
+```
+
+## Proxy 模块
+
+Proxy 可单独安装，也默认随 `dev` / `workstation` 套餐安装；可用 `--no-proxy` 跳过套餐中的 Proxy。默认配置为：
+
+```bash
+ENABLE_PROXY=1 # 1=随 dev/workstation 安装，0=dev/workstation 跳过；直接执行 proxy 命令不受此项限制
 PROXY_CORE="mihomo" # mihomo / sing-box
 PROXY_AUTO_ENABLE_SERVICE=1 # 1=安装后启用并启动服务，0=只安装和生成配置
 
@@ -202,10 +225,10 @@ ENABLE_METACUBEXD=1 # 1=安装 MetaCubeXD 面板，0=不安装面板
 bash install.sh proxy
 ```
 
-安装完整工作站时顺带安装 Proxy：
+`dev` 和 `workstation` 默认会顺带安装 Proxy；临时跳过可使用：
 
 ```bash
-bash install.sh workstation --with-proxy
+bash install.sh workstation --no-proxy
 ```
 
 切换为 sing-box：

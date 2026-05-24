@@ -89,6 +89,13 @@ render_zshrc() {
   cat > "${HOME}/.zshrc" <<'EOF'
 # ArchDevKit 生成的 zsh 配置
 # 如需修改主题或插件，建议先备份该文件。
+
+if [[ -d "${HOME}/.local/bin" ]]; then
+  case ":${PATH}:" in
+    *":${HOME}/.local/bin:"*) ;;
+    *) export PATH="${HOME}/.local/bin:${PATH}" ;;
+  esac
+fi
 EOF
 
   if [[ "${INSTALL_OH_MY_ZSH:-0}" -eq 1 ]]; then

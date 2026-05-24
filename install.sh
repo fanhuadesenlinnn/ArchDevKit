@@ -9,6 +9,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/install_vars"
 source "${SCRIPT_DIR}/lib/common.sh"
 source "${SCRIPT_DIR}/modules/base.sh"
+source "${SCRIPT_DIR}/modules/dns.sh"
 source "${SCRIPT_DIR}/modules/archlinuxcn.sh"
 source "${SCRIPT_DIR}/modules/git.sh"
 source "${SCRIPT_DIR}/modules/runtime.sh"
@@ -28,7 +29,7 @@ ArchDevKit - Arch Linux 工作站初始化工具
 用法：
   bash install.sh
   bash install.sh config
-  bash install.sh base|archlinuxcn|git|runtime|nvim|docker|fonts|shell|desktop|proxy|dev|workstation
+  bash install.sh base|dns|archlinuxcn|git|runtime|nvim|docker|fonts|shell|desktop|proxy|dev|workstation
 
 常用参数：
   -y, --yes                 自动确认
@@ -36,6 +37,9 @@ ArchDevKit - Arch Linux 工作站初始化工具
   --no-china                不配置 npm/pip 国内源
   --no-github-proxy         不使用 GitHub 代理
   --github-proxy URL        指定 GitHub 代理
+  --dns                     dev/workstation 中配置系统 DNS
+  --no-dns                  dev/workstation 中跳过系统 DNS
+  --dns-over-tls MODE       systemd-resolved DNSOverTLS：no / opportunistic / yes
   --repo URL                指定 Neovim 配置仓库
   --branch NAME             指定 Neovim 配置分支
   --no-plugin-sync          不同步 Neovim 插件
@@ -59,8 +63,8 @@ ArchDevKit - Arch Linux 工作站初始化工具
   --rime-repo URL           指定 Rime 配置仓库
   --rime-branch NAME        指定 Rime 配置分支
   --no-rime-config          不安装 Rime 配置仓库
-  --with-proxy              workstation 中安装 Proxy 模块
-  --no-proxy                workstation 中不安装 Proxy 模块
+  --with-proxy              dev/workstation 中安装 Proxy 模块
+  --no-proxy                dev/workstation 中不安装 Proxy 模块
   --proxy-core NAME         指定代理核心：mihomo / sing-box
   --no-metacubexd           不安装 MetaCubeXD 面板
   --mihomo-config PATH/URL  指定 Mihomo 配置文件或 URL
@@ -71,7 +75,7 @@ EOF
 parse_args() {
   while [[ $# -gt 0 ]]; do
     case "$1" in
-      base|archlinuxcn|git|runtime|nvim|docker|fonts|shell|zsh|desktop|hyprland|proxy|dev|workstation|config|menu|help)
+      base|dns|archlinuxcn|git|runtime|nvim|docker|fonts|shell|zsh|desktop|hyprland|proxy|dev|workstation|config|menu|help)
         COMMAND="$1"; shift ;;
       -y|--yes) ASSUME_YES=1; shift ;;
       --dry-run) DRY_RUN=1; shift ;;
@@ -79,6 +83,10 @@ parse_args() {
       --no-github-proxy) ENABLE_GITHUB_PROXY=0; shift ;;
       --github-proxy) GITHUB_PROXY="${2:-}"; ENABLE_GITHUB_PROXY=1; shift 2 ;;
       --github-proxy=*) GITHUB_PROXY="${1#*=}"; ENABLE_GITHUB_PROXY=1; shift ;;
+      --dns) ENABLE_DNS=1; shift ;;
+      --no-dns) ENABLE_DNS=0; shift ;;
+      --dns-over-tls) DNS_OVER_TLS="${2:-no}"; shift 2 ;;
+      --dns-over-tls=*) DNS_OVER_TLS="${1#*=}"; shift ;;
       --repo) NVIM_REPO="${2:-}"; shift 2 ;;
       --repo=*) NVIM_REPO="${1#*=}"; shift ;;
       --branch) NVIM_BRANCH="${2:-}"; shift 2 ;;
@@ -151,6 +159,11 @@ show_config() {
   echo "pip 源:               ${PIP_INDEX_URL}"
   echo "启用 GitHub 代理:     $(bool_text "${ENABLE_GITHUB_PROXY}")"
   echo "GitHub 代理地址:      ${GITHUB_PROXY}"
+  echo "系统 DNS:             $(bool_text "${ENABLE_DNS}")"
+  echo "DNS 服务器:           ${DNS_SERVERS[*]}"
+  echo "DNS fallback:         ${DNS_FALLBACK_SERVERS[*]}"
+  echo "DNS 国外 fallback:    ${DNS_FOREIGN_FALLBACK_SERVERS[*]}"
+  echo "DNSOverTLS:           ${DNS_OVER_TLS}"
   echo "HTTPS_PROXY:          ${HTTPS_PROXY:-未设置}"
   echo "HTTP_PROXY:           ${HTTP_PROXY:-未设置}"
   echo "ALL_PROXY:            ${ALL_PROXY:-未设置}"
@@ -190,6 +203,7 @@ show_config() {
   echo "浏览器安装包:         ${BROWSER_PACKAGE}"
   echo "浏览器启动命令:       ${BROWSER_APP}"
   echo "终端启动命令:         ${TERMINAL_APP}"
+  echo "Neovide 包装命令:     ${HOME}/.local/bin/neovide"
   echo "输入法框架:           Fcitx5 $(bool_text "${ENABLE_FCITX5}")"
   echo "输入法引擎:           ${INPUT_METHOD_ENGINE}"
   echo "Rime 默认方案:        ${RIME_SCHEMA}"
@@ -199,7 +213,7 @@ show_config() {
   echo "安装 Rime 配置:       $(bool_text "${INSTALL_RIME_CONFIG}")"
   echo
   echo "[Proxy]"
-  echo "随 workstation 安装:  $(bool_text "${ENABLE_PROXY}")"
+  echo "随 dev/workstation 安装: $(bool_text "${ENABLE_PROXY}")"
   echo "代理核心:             ${PROXY_CORE}"
   echo "自动启用服务:         $(bool_text "${PROXY_AUTO_ENABLE_SERVICE}")"
   echo "Mihomo 包:            ${MIHOMO_PACKAGE}"
@@ -226,6 +240,7 @@ show_config() {
 module_desc() {
   case "$1" in
     base) echo "基础环境" ;;
+    dns) echo "系统 DNS" ;;
     archlinuxcn) echo "archlinuxcn 软件源" ;;
     git) echo "Git / GitHub CLI" ;;
     runtime) echo "mise + Node/npm/Python/Go" ;;
@@ -304,6 +319,42 @@ modules_for_proxy() {
   echo "${modules}"
 }
 
+modules_for_dev() {
+  local module modules=""
+
+  modules="$(append_plan_module "${modules}" "base")"
+  if [[ "${INSTALL_ARCHLINUXCN:-0}" -eq 1 ]]; then
+    modules="$(append_plan_module "${modules}" "archlinuxcn")"
+  fi
+  if [[ "${ENABLE_DNS:-0}" -eq 1 ]]; then
+    modules="$(append_plan_module "${modules}" "dns")"
+  fi
+  modules="$(append_plan_module "${modules}" "git")"
+  modules="$(append_plan_module "${modules}" "runtime")"
+  modules="$(append_plan_module "${modules}" "nvim")"
+  modules="$(append_plan_module "${modules}" "fonts")"
+  modules="$(append_plan_module "${modules}" "shell")"
+
+  if [[ "${ENABLE_PROXY:-0}" -eq 1 ]]; then
+    for module in $(modules_for_proxy); do
+      modules="$(append_plan_module "${modules}" "${module}")"
+    done
+  fi
+
+  echo "${modules}"
+}
+
+modules_for_workstation() {
+  local module modules
+
+  modules="$(modules_for_dev)"
+  for module in $(modules_for_desktop); do
+    modules="$(append_plan_module "${modules}" "${module}")"
+  done
+
+  echo "${modules}"
+}
+
 plan_uses_github_proxy() {
   local modules_text="$1"
 
@@ -335,6 +386,7 @@ plan_needs_git_command() {
 modules_for_command() {
   case "$1" in
     base) echo "base" ;;
+    dns) echo "dns" ;;
     archlinuxcn) echo "archlinuxcn" ;;
     git) echo "git" ;;
     runtime) echo "runtime" ;;
@@ -344,14 +396,8 @@ modules_for_command() {
     shell|zsh) modules_for_shell ;;
     proxy) modules_for_proxy ;;
     desktop|hyprland) modules_for_desktop ;;
-    dev) echo "base git runtime nvim docker" ;;
-    workstation)
-      local modules="base"
-      [[ "${INSTALL_ARCHLINUXCN:-0}" -eq 1 ]] && modules="${modules} archlinuxcn"
-      modules="${modules} git runtime nvim docker fonts shell desktop"
-      [[ "${ENABLE_PROXY:-0}" -eq 1 ]] && modules="${modules} proxy"
-      echo "${modules}"
-      ;;
+    dev) modules_for_dev ;;
+    workstation) modules_for_workstation ;;
     *) echo "$1" ;;
   esac
 }
@@ -377,6 +423,13 @@ show_plan() {
   if plan_has_module "${modules_text}" "archlinuxcn"; then
     echo "  archlinuxcn 源:   ${ARCHLINUXCN_SERVER}"
     echo "  mirrorlist 包:    $(bool_text "${INSTALL_ARCHLINUXCN_MIRRORLIST}")"
+  fi
+  if plan_has_module "${modules_text}" "dns"; then
+    echo "  系统 DNS:         systemd-resolved"
+    echo "  DNS 服务器:       ${DNS_SERVERS[*]}"
+    echo "  DNS fallback:     ${DNS_FALLBACK_SERVERS[*]}"
+    echo "  DNS 国外 fallback: ${DNS_FOREIGN_FALLBACK_SERVERS[*]}"
+    echo "  DNSOverTLS:       ${DNS_OVER_TLS}"
   fi
   if plan_has_module "${modules_text}" "git"; then
     echo "  Git 默认分支:     main"
@@ -430,6 +483,7 @@ show_plan() {
       echo "  hyprdots 提交:    ${HYPRDOTS_SOURCE_COMMIT:-unknown}"
       echo "  Obsidian:         $(bool_text "${INSTALL_HYPRDOTS_OBSIDIAN}")"
     fi
+    echo "  Neovide:          安装并写入 ~/.local/bin/neovide 包装命令"
     echo "  浏览器包/命令:    ${BROWSER_PACKAGE} / ${BROWSER_APP}"
     echo "  输入法:           Fcitx5 $(bool_text "${ENABLE_FCITX5}") / ${INPUT_METHOD_ENGINE}"
     if [[ "${INPUT_METHOD_ENGINE:-rime}" == "rime" ]]; then
@@ -454,28 +508,25 @@ show_plan() {
 
 install_profile_dev() {
   install_base
+  [[ "${INSTALL_ARCHLINUXCN:-0}" -eq 1 ]] && install_archlinuxcn
+  ensure_dns_env
   install_git_env
   install_runtime_env
   install_nvim_env
-  install_docker_env
+  install_fonts
+  install_shell_zsh
+  ensure_proxy_env
 }
 
 install_profile_workstation() {
-  install_base
-  [[ "${INSTALL_ARCHLINUXCN:-0}" -eq 1 ]] && install_archlinuxcn
-  install_git_env
-  install_runtime_env
-  install_nvim_env
-  install_docker_env
-  install_fonts
-  install_shell_zsh
+  install_profile_dev
   install_desktop_hyprland
-  ensure_proxy_env
 }
 
 run_command() {
   case "$1" in
     base) install_base ;;
+    dns) install_dns_env ;;
     archlinuxcn) install_archlinuxcn ;;
     git) install_git_env ;;
     runtime) install_runtime_env ;;
@@ -497,7 +548,7 @@ show_summary() {
   echo "[执行完成]"
   echo "已处理模块:"
   local key display_key
-  for key in base archlinuxcn git runtime nvim docker fonts shell_zsh desktop_hyprland proxy; do
+  for key in base dns archlinuxcn git runtime nvim docker fonts shell_zsh desktop_hyprland proxy; do
     display_key="${key}"
     [[ "${key}" == "shell_zsh" ]] && display_key="shell"
     [[ "${key}" == "desktop_hyprland" ]] && display_key="desktop"
@@ -506,7 +557,7 @@ show_summary() {
   echo
   echo "后续建议:"
   local tip_no=0 done_count=0
-  for key in base archlinuxcn git runtime nvim docker fonts shell_zsh desktop_hyprland proxy; do
+  for key in base dns archlinuxcn git runtime nvim docker fonts shell_zsh desktop_hyprland proxy; do
     is_done "${key}" && done_count=$((done_count + 1))
   done
   add_summary_tip() {
@@ -520,6 +571,12 @@ show_summary() {
   fi
   if is_done "archlinuxcn"; then
     add_summary_tip "archlinuxcn 源已配置；若后续软件查不到，先执行 sudo pacman -Syu 再重试。"
+  fi
+  if is_done "dns"; then
+    add_summary_tip "系统 DNS 已交给 systemd-resolved；查看状态可执行：resolvectl status。"
+    if [[ "${DNS_RESTART_NETWORKMANAGER:-0}" -ne 1 ]]; then
+      add_summary_tip "NetworkManager DNS 后端配置会在 NetworkManager 重启后完全生效。"
+    fi
   fi
   if is_done "git"; then
     add_summary_tip "如需使用 GitHub CLI 登录，执行：gh auth login && gh auth setup-git。"
@@ -551,6 +608,7 @@ show_summary() {
     if [[ "${ENABLE_FCITX5:-0}" -eq 1 ]]; then
       add_summary_tip "输入法环境变量已写入；如果 Rime/Fcitx5 未出现，注销重登后再打开 fcitx5-configtool 检查。"
     fi
+    add_summary_tip "Neovide 需要图形会话；TTY/SSH 中请使用 nvim，Hyprland 会话中可直接运行 neovide。"
   fi
   if is_done "proxy"; then
     case "${PROXY_CORE:-mihomo}" in
@@ -598,36 +656,38 @@ show_menu() {
     echo "----------------------------------------------------------"
     echo "[ArchDevKit 工作站初始化工具]"
     echo "1) 安装基础环境"
-    echo "2) 配置 archlinuxcn 源"
-    echo "3) 安装 Git / GitHub 环境"
-    echo "4) 安装 Runtime 环境：mise + Node/npm/Python/Go"
-    echo "5) 安装 Neovim 环境"
-    echo "6) 安装 Docker 环境"
-    echo "7) 安装字体环境"
-    echo "8) 安装 Zsh / Oh My Zsh / Powerlevel10k"
-    echo "9) 安装 Hyprland 桌面环境"
-    echo "10) 安装 Proxy 代理环境（可选：mihomo / MetaCubeXD / sing-box）"
-    echo "11) 安装开发环境组合"
-    echo "12) 安装完整工作站"
-    echo "13) 查看当前配置"
+    echo "2) 配置系统 DNS"
+    echo "3) 配置 archlinuxcn 源"
+    echo "4) 安装 Git / GitHub 环境"
+    echo "5) 安装 Runtime 环境：mise + Node/npm/Python/Go"
+    echo "6) 安装 Neovim 环境"
+    echo "7) 安装 Docker 环境"
+    echo "8) 安装字体环境"
+    echo "9) 安装 Zsh / Oh My Zsh / Powerlevel10k"
+    echo "10) 安装 Hyprland 桌面环境"
+    echo "11) 安装 Proxy 代理环境（可选：mihomo / MetaCubeXD / sing-box）"
+    echo "12) 安装开发环境组合"
+    echo "13) 安装完整工作站"
+    echo "14) 查看当前配置"
     echo "0) 退出"
     echo "----------------------------------------------------------"
-    read -r -p "请选择 [12]: " select_num
-    select_num="${select_num:-12}"
+    read -r -p "请选择 [13]: " select_num
+    select_num="${select_num:-13}"
     case "${select_num}" in
       1) confirm_and_run_command "base" "基础环境"; pause ;;
-      2) confirm_and_run_command "archlinuxcn" "archlinuxcn 源"; pause ;;
-      3) confirm_and_run_command "git" "Git / GitHub 环境"; pause ;;
-      4) confirm_and_run_command "runtime" "Runtime 环境"; pause ;;
-      5) confirm_and_run_command "nvim" "Neovim 环境"; pause ;;
-      6) confirm_and_run_command "docker" "Docker 环境"; pause ;;
-      7) confirm_and_run_command "fonts" "字体环境"; pause ;;
-      8) confirm_and_run_command "shell" "Zsh / Oh My Zsh / Powerlevel10k"; pause ;;
-      9) confirm_and_run_command "desktop" "Hyprland 桌面环境"; pause ;;
-      10) confirm_and_run_command "proxy" "Proxy 代理环境"; pause ;;
-      11) confirm_and_run_command "dev" "开发环境组合"; pause ;;
-      12) confirm_and_run_command "workstation" "完整工作站"; pause ;;
-      13) show_config; pause ;;
+      2) confirm_and_run_command "dns" "系统 DNS"; pause ;;
+      3) confirm_and_run_command "archlinuxcn" "archlinuxcn 源"; pause ;;
+      4) confirm_and_run_command "git" "Git / GitHub 环境"; pause ;;
+      5) confirm_and_run_command "runtime" "Runtime 环境"; pause ;;
+      6) confirm_and_run_command "nvim" "Neovim 环境"; pause ;;
+      7) confirm_and_run_command "docker" "Docker 环境"; pause ;;
+      8) confirm_and_run_command "fonts" "字体环境"; pause ;;
+      9) confirm_and_run_command "shell" "Zsh / Oh My Zsh / Powerlevel10k"; pause ;;
+      10) confirm_and_run_command "desktop" "Hyprland 桌面环境"; pause ;;
+      11) confirm_and_run_command "proxy" "Proxy 代理环境"; pause ;;
+      12) confirm_and_run_command "dev" "开发环境组合"; pause ;;
+      13) confirm_and_run_command "workstation" "完整工作站"; pause ;;
+      14) show_config; pause ;;
       0) exit 0 ;;
       *) log_warn "未知选择：${select_num}"; pause ;;
     esac
@@ -644,6 +704,7 @@ main() {
     config) show_config ;;
     help) show_help ;;
     base) confirm_and_run_command "base" "基础环境" ;;
+    dns) confirm_and_run_command "dns" "系统 DNS" ;;
     archlinuxcn) confirm_and_run_command "archlinuxcn" "archlinuxcn 源" ;;
     git) confirm_and_run_command "git" "Git / GitHub 环境" ;;
     runtime) confirm_and_run_command "runtime" "Runtime 环境" ;;

@@ -2,6 +2,7 @@
 
 # ArchDevKit 在 Arch Linux 上执行，脚本和配置必须保持 LF，避免 shebang 被 CRLF 破坏。
 *.sh text eol=lf
+*.zsh text eol=lf
 install.sh text eol=lf
 install_vars text eol=lf
 switch_waybar text eol=lf

@@ -23,6 +23,22 @@ GO_DOWNLOAD_MIRROR="https://mirrors.aliyun.com/golang"
 ENABLE_MISE_GITHUB_URL_REPLACEMENT=1
 
 # =========================
+# DNS：systemd-resolved 系统解析基线
+# =========================
+ENABLE_DNS=1
+DNS_SERVERS=(223.5.5.5 223.6.6.6 119.29.29.29 114.114.114.114)
+DNS_FALLBACK_SERVERS=(180.76.76.76 114.114.115.115)
+DNS_FOREIGN_FALLBACK_SERVERS=(1.1.1.1 8.8.8.8)
+DNS_DNSSEC="no"
+DNS_OVER_TLS="no"
+DNS_CACHE="yes"
+DNS_LLMNR="no"
+DNS_MULTICAST_DNS="no"
+DNS_CONFIGURE_NETWORKMANAGER=1
+DNS_LINK_RESOLV_CONF=1
+DNS_RESTART_NETWORKMANAGER=0
+
+# =========================
 # archlinuxcn
 # =========================
 INSTALL_ARCHLINUXCN=1
@@ -64,7 +80,7 @@ POWERLEVEL10K_REPO="https://github.com/romkatv/powerlevel10k.git"
 
 ZSH_THEME_NAME="powerlevel10k/powerlevel10k"
 ZSH_PLUGINS="git zsh-autosuggestions zsh-syntax-highlighting fzf docker kubectl"
-P10K_CONFIG_SOURCE="${SCRIPT_DIR}/files/p10k.clean.zsh"
+P10K_CONFIG_SOURCE="${SCRIPT_DIR}/files/p10k.zsh"
 
 # =========================
 # 字体
@@ -136,7 +152,7 @@ BROWSER_APP="google-chrome-stable"
 # =========================
 # Proxy：代理核心和面板（可选）
 # =========================
-ENABLE_PROXY=0 # 1=随 workstation 安装，0=不随 workstation 安装；直接执行 proxy 命令不受此项限制
+ENABLE_PROXY=1 # 1=随 dev/workstation 安装，0=dev/workstation 跳过；直接执行 proxy 命令不受此项限制
 PROXY_CORE="mihomo" # mihomo / sing-box
 PROXY_AUTO_ENABLE_SERVICE=1 # 1=安装后启用并启动服务，0=只安装和生成配置
 
