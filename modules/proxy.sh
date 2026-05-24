@@ -11,6 +11,28 @@ proxy_service_name() {
   esac
 }
 
+install_proxy_shell_env_template() {
+  local rc_file line
+  local lines=(
+    "# ArchDevKit proxy environment template. Uncomment when needed."
+    "# export http_proxy=\"http://127.0.0.1:7890\""
+    "# export https_proxy=\"http://127.0.0.1:7890\""
+    "# export all_proxy=\"socks5://127.0.0.1:7890\""
+    "# export HTTP_PROXY=\"\$http_proxy\""
+    "# export HTTPS_PROXY=\"\$https_proxy\""
+    "# export ALL_PROXY=\"\$all_proxy\""
+    "# export no_proxy=\"localhost,127.0.0.1,::1\""
+    "# export NO_PROXY=\"\$no_proxy\""
+  )
+
+  log_info "写入 shell 代理环境变量模板（默认注释）"
+  for rc_file in "${HOME}/.bashrc" "${HOME}/.zshrc"; do
+    for line in "${lines[@]}"; do
+      append_unique_line "${line}" "${rc_file}"
+    done
+  done
+}
+
 proxy_needs_archlinuxcn() {
   local package
   case "${PROXY_CORE:-mihomo}" in
@@ -418,6 +440,7 @@ install_proxy_env() {
       ;;
   esac
 
+  install_proxy_shell_env_template
   enable_proxy_service_if_needed
   verify_proxy_env
 

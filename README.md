@@ -13,7 +13,7 @@ ArchDevKit 是一个面向 Arch Linux 最小化安装后的工作站初始化工
 - `dns`：systemd-resolved 系统 DNS
 - `archlinuxcn`：配置 archlinuxcn 软件源
 - `git`：Git / GitHub CLI 环境
-- `runtime`：mise + Node.js / npm / Python / Go
+- `runtime`：系统 Node.js / npm / Python / Go + mise 版本管理器
 - `nvim`：Neovim + 个人配置仓库
 - `docker`：Docker / Docker Compose / 镜像源
 - `fonts`：中文字体、Nerd Font、可选 Monaco
@@ -92,11 +92,14 @@ bash install.sh config
 
 - npm 源：`https://registry.npmmirror.com`
 - pip 源：`https://pypi.tuna.tsinghua.edu.cn/simple`
-- mise Node.js 下载镜像：`https://npmmirror.com/mirrors/node/`
-- mise Go SDK 下载镜像：`https://mirrors.aliyun.com/golang`
-- python-build 下载镜像：`https://registry.npmmirror.com/-/binary/python/`
+- 系统 Node.js / npm / Python / Go：默认通过 `pacman` 安装
+- mise Node.js 下载镜像：`https://npmmirror.com/mirrors/node/`（仅后续手动 `mise use` 使用）
+- mise Go SDK 下载镜像：`https://mirrors.aliyun.com/golang`（仅后续手动 `mise use` 使用）
+- python-build 下载镜像：`https://registry.npmmirror.com/-/binary/python/`（仅后续手动 `mise use` 使用）
 - mise Python 的 pyenv 仓库默认走已配置的 GitHub 代理
 - GitHub 代理：`https://hubproxy.babadafafafafa.cn/`
+
+runtime 模块默认使用 `pacman` 安装系统级 `nodejs`、`npm`、`python`、`python-pip`、`go` 和 `mise`，不会在安装阶段执行 `mise use` 拉取指定语言版本。`NODE_VERSION`、`PYTHON_VERSION`、`GO_VERSION` 这些版本配置只作为后续手动使用 mise 时的目标参考。
 
 runtime 模块会同时写入 `~/.config/archdevkit/mise-china.env`，并让 `~/.bashrc` / `~/.zshrc` 自动加载这些环境变量。这样后续手动执行 `mise use -g python@3.13`、`mise use -g go@1.23` 时，也会继续优先使用国内可用的下载源；如果当前 mise 版本不支持某个 setting，脚本会跳过写入该 setting，改用环境变量兜底，避免出现 `Unknown setting` 报错。脚本不会再默认注入 broad `MISE_URL_REPLACEMENTS`，避免 Go / Python 的 GitHub URL 被二次代理后出现 404。
 
@@ -120,9 +123,9 @@ bash install.sh nvim --github-proxy https://gh-proxy.com/
 --no-china                不配置 npm/pip 国内源
 --no-github-proxy         不使用 GitHub 代理
 --github-proxy URL        指定 GitHub 代理
---node-mirror URL         指定 mise Node.js 下载镜像
---go-mirror URL           指定 mise Go SDK 下载镜像
---python-build-mirror URL 指定 python-build 下载镜像
+--node-mirror URL         指定后续手动 mise use 使用的 Node.js 下载镜像
+--go-mirror URL           指定后续手动 mise use 使用的 Go SDK 下载镜像
+--python-build-mirror URL 指定后续手动 mise use 使用的 python-build 下载镜像
 --pyenv-repo URL          指定 mise Python 使用的 pyenv 仓库
 --dns                     dev/workstation 中配置系统 DNS
 --no-dns                  dev/workstation 中跳过系统 DNS
@@ -130,10 +133,10 @@ bash install.sh nvim --github-proxy https://gh-proxy.com/
 --repo URL                指定 Neovim 配置仓库
 --branch NAME             指定 Neovim 配置分支
 --no-plugin-sync          不同步 Neovim 插件
---node-version VERSION    指定 Node.js 版本
---npm-version VERSION     指定 npm 版本
---python-version VERSION  指定 Python 版本
---go-version VERSION      指定 Go 版本
+--node-version VERSION    指定后续手动 mise use 的 Node.js 目标版本
+--npm-version VERSION     指定后续手动 npm 调整的目标版本
+--python-version VERSION  指定后续手动 mise use 的 Python 目标版本
+--go-version VERSION      指定后续手动 mise use 的 Go 目标版本
 --no-sddm                 不启用 SDDM
 --nvidia                  安装 NVIDIA Wayland 相关包
 --gpu TYPE                指定 GPU 类型：auto / intel / amd / nvidia / vmware / virtio / qxl / virtualbox / none
@@ -213,7 +216,9 @@ bash install.sh workstation --no-dns
 
 ## Proxy 模块
 
-Proxy 可单独安装，也默认随 `dev` / `workstation` 套餐安装；可用 `--no-proxy` 跳过套餐中的 Proxy。默认配置为：
+Proxy 可单独安装，也默认随 `dev` / `workstation` 套餐安装；可用 `--no-proxy` 跳过套餐中的 Proxy。安装 Proxy 模块时，脚本会把一组默认注释掉的 `http_proxy` / `https_proxy` / `all_proxy` 环境变量模板追加到 `~/.bashrc` 和 `~/.zshrc`，后续需要终端走本地代理时取消对应注释即可。
+
+默认配置为：
 
 ```bash
 ENABLE_PROXY=1 # 1=随 dev/workstation 安装，0=dev/workstation 跳过；直接执行 proxy 命令不受此项限制

@@ -124,6 +124,8 @@ if command -v mise >/dev/null 2>&1; then
   eval "$(mise activate zsh)"
 fi
 
+[[ -f "${HOME}/.config/archdevkit/mise-china.env" ]] && source "${HOME}/.config/archdevkit/mise-china.env"
+
 if [[ -f /usr/share/fzf/key-bindings.zsh ]]; then
   source /usr/share/fzf/key-bindings.zsh
 fi

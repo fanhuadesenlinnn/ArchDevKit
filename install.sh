@@ -37,9 +37,9 @@ ArchDevKit - Arch Linux 工作站初始化工具
   --no-china                不配置 npm/pip 国内源
   --no-github-proxy         不使用 GitHub 代理
   --github-proxy URL        指定 GitHub 代理
-  --node-mirror URL         指定 mise Node.js 下载镜像
-  --go-mirror URL           指定 mise Go SDK 下载镜像
-  --python-build-mirror URL 指定 python-build 下载镜像
+  --node-mirror URL         指定后续手动 mise use 使用的 Node.js 下载镜像
+  --go-mirror URL           指定后续手动 mise use 使用的 Go SDK 下载镜像
+  --python-build-mirror URL 指定后续手动 mise use 使用的 python-build 下载镜像
   --pyenv-repo URL          指定 mise Python 使用的 pyenv 仓库
   --dns                     dev/workstation 中配置系统 DNS
   --no-dns                  dev/workstation 中跳过系统 DNS
@@ -47,10 +47,10 @@ ArchDevKit - Arch Linux 工作站初始化工具
   --repo URL                指定 Neovim 配置仓库
   --branch NAME             指定 Neovim 配置分支
   --no-plugin-sync          不同步 Neovim 插件
-  --node-version VERSION    指定 Node.js 版本
-  --npm-version VERSION     指定 npm 版本
-  --python-version VERSION  指定 Python 版本
-  --go-version VERSION      指定 Go 版本
+  --node-version VERSION    指定后续手动 mise use 的 Node.js 目标版本
+  --npm-version VERSION     指定后续手动 npm 调整的目标版本
+  --python-version VERSION  指定后续手动 mise use 的 Python 目标版本
+  --go-version VERSION      指定后续手动 mise use 的 Go 目标版本
   --no-sddm                 不启用 SDDM
   --nvidia                  安装 NVIDIA Wayland 相关包
   --gpu TYPE                指定 GPU 类型：auto / intel / amd / nvidia / vmware / virtio / qxl / virtualbox / none
@@ -169,9 +169,9 @@ show_config() {
   echo "启用国内源:           $(bool_text "${ENABLE_CHINA_MIRROR}")"
   echo "npm 源:               ${NPM_REGISTRY}"
   echo "pip 源:               ${PIP_INDEX_URL}"
-  echo "mise Node 镜像:       ${NODE_MIRROR_URL}"
-  echo "mise Go 镜像:         ${GO_DOWNLOAD_MIRROR}"
-  echo "python-build 镜像:    ${PYTHON_BUILD_MIRROR_URL}"
+  echo "mise Node 镜像:       ${NODE_MIRROR_URL}（仅后续手动 mise use）"
+  echo "mise Go 镜像:         ${GO_DOWNLOAD_MIRROR}（仅后续手动 mise use）"
+  echo "python-build 镜像:    ${PYTHON_BUILD_MIRROR_URL}（仅后续手动 mise use）"
   echo "pyenv 实际仓库:       $(mise_pyenv_repo_url)"
   echo "启用 GitHub 代理:     $(bool_text "${ENABLE_GITHUB_PROXY}")"
   echo "GitHub 代理地址:      ${GITHUB_PROXY}"
@@ -185,11 +185,13 @@ show_config() {
   echo "ALL_PROXY:            ${ALL_PROXY:-未设置}"
   echo
   echo "[Runtime]"
-  echo "管理工具:             ${RUNTIME_MANAGER}"
-  echo "Node.js 版本:         ${NODE_VERSION}"
-  echo "npm 版本:             ${NPM_VERSION}"
-  echo "Python 版本:          ${PYTHON_VERSION}"
-  echo "Go 版本:              ${GO_VERSION}"
+  echo "系统运行时:           pacman 安装 nodejs/npm/python/python-pip/go"
+  echo "管理工具:             ${RUNTIME_MANAGER}（只配置，不默认执行 mise use）"
+  echo "mise Node.js 目标:    ${NODE_VERSION}"
+  echo "npm 目标:             ${NPM_VERSION}"
+  echo "mise Python 目标:     ${PYTHON_VERSION}"
+  echo "mise Go 目标:         ${GO_VERSION}"
+  echo "Corepack:             $(bool_text "${ENABLE_COREPACK}")"
   echo
   echo "[Neovim]"
   echo "配置仓库:             ${NVIM_REPO}"
@@ -260,7 +262,7 @@ module_desc() {
     dns) echo "系统 DNS" ;;
     archlinuxcn) echo "archlinuxcn 软件源" ;;
     git) echo "Git / GitHub CLI" ;;
-    runtime) echo "mise + Node/npm/Python/Go" ;;
+    runtime) echo "系统 Node/npm/Python/Go + mise 版本管理器" ;;
     nvim) echo "Neovim + 个人配置" ;;
     docker) echo "Docker / Compose" ;;
     fonts) echo "字体环境" ;;
@@ -453,14 +455,16 @@ show_plan() {
     echo "  GitHub CLI:       安装 gh，登录需稍后手动执行 gh auth login"
   fi
   if plan_has_module "${modules_text}" "runtime"; then
-    echo "  管理工具:         ${RUNTIME_MANAGER}"
-    echo "  Node.js/npm:      ${NODE_VERSION} / ${NPM_VERSION}"
-    echo "  Python/Go:        ${PYTHON_VERSION} / ${GO_VERSION}"
+    echo "  系统运行时:       pacman 安装 nodejs/npm/python/python-pip/go"
+    echo "  系统包:           mise nodejs npm python python-pip go$( [[ "${ENABLE_COREPACK:-0}" -eq 1 ]] && printf ' corepack' )"
+    echo "  管理工具:         ${RUNTIME_MANAGER}（只配置，不默认执行 mise use）"
+    echo "  mise 目标版本:    node ${NODE_VERSION} / python ${PYTHON_VERSION} / go ${GO_VERSION}"
+    echo "  npm 目标版本:     ${NPM_VERSION}（仅保留配置兼容）"
     echo "  npm 源:           ${NPM_REGISTRY}"
     echo "  pip 源:           ${PIP_INDEX_URL}"
-    echo "  Node 下载镜像:    ${NODE_MIRROR_URL}"
-    echo "  Go 下载镜像:      ${GO_DOWNLOAD_MIRROR}"
-    echo "  Python 下载镜像:  ${PYTHON_BUILD_MIRROR_URL}"
+    echo "  Node 下载镜像:    ${NODE_MIRROR_URL}（手动 mise use）"
+    echo "  Go 下载镜像:      ${GO_DOWNLOAD_MIRROR}（手动 mise use）"
+    echo "  Python 下载镜像:  ${PYTHON_BUILD_MIRROR_URL}（手动 mise use）"
     echo "  pyenv 实际仓库:   $(mise_pyenv_repo_url)"
     echo "  Corepack:         $(bool_text "${ENABLE_COREPACK}")"
   fi
@@ -604,7 +608,7 @@ show_summary() {
     add_summary_tip "如需使用 GitHub CLI 登录，执行：gh auth login && gh auth setup-git。"
   fi
   if is_done "runtime"; then
-    add_summary_tip "重新打开终端，或执行 exec \"\$SHELL\"，让 mise 的 Node.js/npm/Python/Go 配置生效。"
+    add_summary_tip "系统 Node.js/npm/Python/Go 已可直接使用；重新打开终端，或执行 exec \"\$SHELL\"，让 mise activation 生效。"
   fi
   if is_done "nvim"; then
     add_summary_tip "首次打开 Neovim 会加载插件；如果同步失败，可执行：nvim +Lazy sync。"
@@ -681,7 +685,7 @@ show_menu() {
     echo "2) 配置系统 DNS"
     echo "3) 配置 archlinuxcn 源"
     echo "4) 安装 Git / GitHub 环境"
-    echo "5) 安装 Runtime 环境：mise + Node/npm/Python/Go"
+    echo "5) 安装 Runtime 环境：系统 Node/npm/Python/Go + mise 版本管理器"
     echo "6) 安装 Neovim 环境"
     echo "7) 安装 Docker 环境"
     echo "8) 安装字体环境"
