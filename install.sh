@@ -23,6 +23,7 @@ source "${SCRIPT_DIR}/modules/proxy.sh"
 source "${SCRIPT_DIR}/lib/module_registry.sh"
 source "${SCRIPT_DIR}/lib/config.sh"
 source "${SCRIPT_DIR}/lib/doctor.sh"
+source "${SCRIPT_DIR}/lib/recovery.sh"
 
 ACTION="menu"
 TARGET="${ARCHDEVKIT_DEFAULT_PROFILE:-workstation}"
@@ -720,8 +721,10 @@ run_plan() {
     fi
 
     log_info "[${index}/${total}] 开始处理 ${display}：$(module_desc "${module}")"
+    set_current_module "${module}" "${index}" "${total}"
     module_install_func "${module}"
     mark_module_installed "${module}"
+    clear_current_module
     log_info "[${index}/${total}] ${display} 处理完成"
   done
 }
@@ -838,8 +841,11 @@ confirm_and_run_target() {
   fi
   if [[ "${ASSUME_YES:-0}" -eq 1 ]] || confirm_yes "是否按以上计划继续安装？"; then
     start_run_log
+    enable_install_recovery
+    set_install_phase "preflight"
     preflight_install "${modules_text}"
     run_plan "${modules_text}"
+    disable_install_recovery
     show_summary
   else
     log_warn "已取消安装：${target}"

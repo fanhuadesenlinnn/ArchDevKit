@@ -69,6 +69,23 @@ bash install.sh doctor --json | ruby -rjson -e '
   raise "missing checks" unless data.fetch("checks").is_a?(Array)
 '
 
+echo "==> recovery hints"
+recovery_output="$(
+  TARGET=workstation ARCHDEVKIT_LOG_FILE=/tmp/archdevkit-test.log bash -c '
+    set -Eeuo pipefail
+    source lib/module_registry.sh
+    source lib/recovery.sh
+    enable_install_recovery
+    set_current_module runtime 3 10
+    false
+  ' 2>&1 || true
+)"
+[[ "${recovery_output}" == *"[安装中断]"* ]] || { echo "missing recovery title"; exit 1; }
+[[ "${recovery_output}" == *"失败模块: runtime"* ]] || { echo "missing failed module"; exit 1; }
+[[ "${recovery_output}" == *"bash install.sh install workstation --yes"* ]] || { echo "missing target retry"; exit 1; }
+[[ "${recovery_output}" == *"bash install.sh install runtime --force --yes"* ]] || { echo "missing module retry"; exit 1; }
+[[ "${recovery_output}" == *"bash install.sh reset-state runtime"* ]] || { echo "missing reset hint"; exit 1; }
+
 echo "==> mihomo yaml render"
 tmp_mihomo="$(mktemp)"
 sed \
