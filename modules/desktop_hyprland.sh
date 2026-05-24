@@ -647,7 +647,6 @@ virtual_gpu_3d_acceleration_available() {
     vmware|virtio|qxl|virtualbox) ;;
     *) return 1 ;;
   esac
-  [[ "${VMWARE_FORCE_SOFTWARE_RENDERER:-0}" -eq 1 ]] && return 1
 
   local render_nodes=()
   shopt -s nullglob
@@ -675,9 +674,21 @@ virtual_gpu_3d_acceleration_available() {
   return 1
 }
 
+vmware_force_software_renderer() {
+  case "$(to_lower "${VMWARE_FORCE_SOFTWARE_RENDERER:-1}")" in
+    1|true|yes|on) return 0 ;;
+    0|false|no|off) return 1 ;;
+    *)
+      log_warn "VMWARE_FORCE_SOFTWARE_RENDERER=${VMWARE_FORCE_SOFTWARE_RENDERER} 无法识别，默认启用 VMware 软件渲染"
+      return 0
+      ;;
+  esac
+}
+
 hyprland_needs_software_renderer() {
   case "$(effective_gpu_type)" in
     vmware)
+      vmware_force_software_renderer && return 0
       virtual_gpu_3d_acceleration_available && return 1
       return 0
       ;;
@@ -716,13 +727,17 @@ configure_hyprland_gpu_env() {
 
   if hyprland_needs_software_renderer; then
     local with_env
-    log_warn "未检测到可用的硬件 EGL 渲染器；为 ${gpu} 写入 Hyprland llvmpipe 兜底"
+    if [[ "${gpu}" == "vmware" ]] && vmware_force_software_renderer; then
+      log_warn "VMware 默认使用 Hyprland llvmpipe 兜底，避免 SVGA3D 导致 Wayland GL 应用启动失败"
+    else
+      log_warn "未检测到可用的硬件 EGL 渲染器；为 ${gpu} 写入 Hyprland llvmpipe 兜底"
+    fi
     with_env="$(mktemp)"
     {
       cat <<EOF
 ### ArchDevKit VM EGL fix ###
-# ${gpu} virtual GPU can fail EGL initialization without a usable 3D renderer.
-# Remove this block automatically when VMware SVGA3D is detected.
+# ${gpu} virtual GPU can fail EGL initialization or native Wayland GL clients.
+# Keep the desktop usable with or without virtual 3D acceleration.
 env = LIBGL_ALWAYS_SOFTWARE,1
 env = MESA_LOADER_DRIVER_OVERRIDE,llvmpipe
 env = GALLIUM_DRIVER,llvmpipe

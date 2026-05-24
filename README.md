@@ -173,9 +173,9 @@ Hyprland 桌面终端默认使用 `~/.local/bin/archdevkit-terminal` 统一入�
 
 `--no-sddm` 会同时跳过 SDDM 包安装和服务启用；`ENABLE_BLUETOOTH=0` 会跳过蓝牙相关包和服务启用。
 
-GPU 默认使用 `GPU_TYPE=auto` 根据 `lspci` 和 `systemd-detect-virt` 自动识别。物理机上会按 Intel、AMD、NVIDIA 安装对应 Wayland/Vulkan/媒体驱动；VMware、virtio、QXL、VirtualBox 虚拟显卡会安装对应 guest agent、Mesa 检测工具和软件渲染兜底。脚本会优先检测可用的硬件/3D 渲染器，只有检测不到可用渲染器时才向 Hyprland 配置写入 llvmpipe 兜底，避免 VM 在支持 3D 加速时被强制降速。
+GPU 默认使用 `GPU_TYPE=auto` 根据 `lspci` 和 `systemd-detect-virt` 自动识别。物理机上会按 Intel、AMD、NVIDIA 安装对应 Wayland/Vulkan/媒体驱动；VMware、virtio、QXL、VirtualBox 虚拟显卡会安装对应 guest agent、Mesa 检测工具和软件渲染兜底。VMware 默认向 Hyprland 写入 llvmpipe 兜底，避免 SVGA3D 虽然通过 EGL 检测、但 Alacritty/Neovide 这类原生 Wayland GL 应用启动失败；这样未开启 VMware 3D 加速时也能正常使用。virtio、QXL、VirtualBox 仍会优先检测可用的硬件/3D 渲染器，只有检测不到可用渲染器时才写入 llvmpipe 兜底。
 
-虚拟机建议在宿主机管理器里启用 3D 图形加速和鼠标/剪贴板集成。脚本会按环境处理 guest agent：VMware 安装并启用 `open-vm-tools`、`gtkmm3`、`libxtst`、`vmtoolsd`、`vmblock` 和 Wayland 用户会话辅助脚本，QEMU/KVM virtio 或 QXL 安装并启用 `qemu-guest-agent` / `spice-vdagent`，VirtualBox 安装并启用 `virtualbox-guest-utils`。VMware 默认保持 `monitor=,preferred,auto,1`，让 `vmware-user-suid-wrapper` 接管鼠标释放、剪贴板和随窗口变化的动态分辨率；如确实需要固定 fallback 分辨率，可设置 `VM_HYPRLAND_DYNAMIC_RESIZE=0` 或使用 `--no-vm-dynamic-resize --vm-monitor-mode 1920x1080@60`。生成的虚拟机配置默认关闭动画、阴影和模糊以降低 VM 延迟；可用 `VM_HYPRLAND_LOW_LATENCY=0` 关闭这组低延迟覆盖。特殊情况下可设置 `VMWARE_FORCE_SOFTWARE_RENDERER=1` 强制使用软件渲染。
+虚拟机建议在宿主机管理器里启用 3D 图形加速和鼠标/剪贴板集成。脚本会按环境处理 guest agent：VMware 安装并启用 `open-vm-tools`、`gtkmm3`、`libxtst`、`vmtoolsd`、`vmblock` 和 Wayland 用户会话辅助脚本，QEMU/KVM virtio 或 QXL 安装并启用 `qemu-guest-agent` / `spice-vdagent`，VirtualBox 安装并启用 `virtualbox-guest-utils`。VMware 默认保持 `monitor=,preferred,auto,1`，让 `vmware-user-suid-wrapper` 接管鼠标释放、剪贴板和随窗口变化的动态分辨率；如确实需要固定 fallback 分辨率，可设置 `VM_HYPRLAND_DYNAMIC_RESIZE=0` 或使用 `--no-vm-dynamic-resize --vm-monitor-mode 1920x1080@60`。生成的虚拟机配置默认关闭动画、阴影和模糊以降低 VM 延迟；可用 `VM_HYPRLAND_LOW_LATENCY=0` 关闭这组低延迟覆盖。如需自行测试 VMware SVGA3D 硬件渲染，可设置 `VMWARE_FORCE_SOFTWARE_RENDERER=0`。
 
 中文输入法默认使用 Fcitx5 + Rime，默认方案为 `luna_pinyin_simp`。安装桌面模块时会默认拉取 `https://github.com/fanhuadesenlinnn/rime-config.git`，并把仓库配置安装到 `~/.local/share/fcitx5/rime`；如果临时不想使用个人配置，可通过 `--no-rime-config` 或 `INSTALL_RIME_CONFIG=0` 关闭。
 

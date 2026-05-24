@@ -207,6 +207,7 @@ show_config() {
   echo "Docker 镜像源:        $(bool_text "${CONFIGURE_DOCKER_MIRRORS}")"
   echo "Hyprland SDDM:        $(bool_text "${ENABLE_SDDM}")"
   echo "GPU 类型:             ${GPU_TYPE}"
+  echo "VMware 软件渲染:      $(bool_text "${VMWARE_FORCE_SOFTWARE_RENDERER:-1}")"
   echo "VM 动态分辨率:        $(bool_text "${VM_HYPRLAND_DYNAMIC_RESIZE:-1}")"
   echo "VM 低延迟配置:        $(bool_text "${VM_HYPRLAND_LOW_LATENCY:-1}")"
   echo "VM 显示 fallback:     ${VM_HYPRLAND_MONITOR_MODE:-${VMWARE_HYPRLAND_MONITOR_MODE:-1920x1080@60}}"
@@ -501,6 +502,7 @@ show_plan() {
   if plan_has_module "${modules_text}" "desktop"; then
     echo "  Hyprland SDDM:    $(bool_text "${ENABLE_SDDM}")"
     echo "  GPU 类型:         ${GPU_TYPE}"
+    echo "  VMware 软件渲染:  $(bool_text "${VMWARE_FORCE_SOFTWARE_RENDERER:-1}")"
     echo "  VM 动态分辨率:    $(bool_text "${VM_HYPRLAND_DYNAMIC_RESIZE:-1}")"
     echo "  VM 低延迟配置:    $(bool_text "${VM_HYPRLAND_LOW_LATENCY:-1}")"
     echo "  Hyprland 配置:    ${HYPRLAND_CONFIG_MODE}"
