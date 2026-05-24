@@ -1,14 +1,12 @@
 #!/usr/bin/env bash
 # Neovim 模块
-# 只负责安装 Neovim 和部署个人配置，Node/Python/Go 由 runtime 模块管理。
+# 只负责安装 Neovim 和部署个人配置，不隐式安装 runtime 模块。
 
 install_nvim_env() {
   if is_done "nvim"; then
     log_info "Neovim 环境已处理，跳过"
     return 0
   fi
-
-  ensure_runtime
 
   log_info "开始安装 Neovim 环境"
   pacman_install neovim python-pynvim
@@ -39,7 +37,7 @@ sync_nvim_plugins() {
 
   # 插件同步依赖 GitHub 网络，失败不应中断整个环境安装。
   # 用户可以稍后手动执行：nvim +Lazy sync
-  if run_with_github_proxy mise exec -- nvim --headless "+Lazy! sync" +qa; then
+  if run_with_github_proxy nvim --headless "+Lazy! sync" +qa; then
     log_info "Neovim 插件同步完成"
   else
     log_warn "Neovim 插件同步失败，可能是 GitHub 网络或插件源问题"

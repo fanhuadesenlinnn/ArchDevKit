@@ -407,7 +407,7 @@ modules_for_command() {
     archlinuxcn) echo "archlinuxcn" ;;
     git) echo "git" ;;
     runtime) echo "runtime" ;;
-    nvim) echo "runtime nvim" ;;
+    nvim) echo "nvim" ;;
     docker) echo "docker" ;;
     fonts) echo "fonts" ;;
     shell|zsh) modules_for_shell ;;

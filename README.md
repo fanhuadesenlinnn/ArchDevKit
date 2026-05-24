@@ -27,7 +27,7 @@ ArchDevKit 是一个面向 Arch Linux 最小化安装后的工作站初始化工
 
 单独安装某个模块时，脚本只安装它的真实依赖，不再默认先执行 `base`：
 
-- `nvim` 会安装 `runtime`，并在克隆配置仓库时按需安装 `git` 包，但不会安装完整的 `git` 模块和 GitHub CLI。
+- `nvim` 只安装 Neovim 和个人配置，并在克隆配置仓库时按需安装 `git` 包；不会隐式安装 `runtime`、完整 `git` 模块或 GitHub CLI。
 - `shell` 只有启用 Powerlevel10k 时才会先安装 `fonts`。
 - `desktop` 默认安装内置 hyprdots 配置；只有该配置、模板或输入法实际需要字体时才会先安装 `fonts`。
 - 需要 AUR 兜底的软件包会先查当前 pacman 源；如果找不到且启用了 `INSTALL_ARCHLINUXCN=1`，会先配置并尝试使用 `archlinuxcn`。
@@ -66,7 +66,7 @@ bash install.sh workstation --yes
 bash install.sh nvim
 ```
 
-该命令会按需处理 Neovim 配置需要的 `runtime` 和 `git` 命令依赖，但不会安装 Docker、完整 GitHub CLI 环境或完整工作站套餐。
+该命令只处理 Neovim 和配置仓库需要的 `git` 命令依赖；不会安装 `runtime`、Docker、完整 GitHub CLI 环境或完整工作站套餐。
 
 只安装 Hyprland：
 
