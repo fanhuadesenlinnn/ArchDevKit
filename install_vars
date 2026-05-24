@@ -123,7 +123,9 @@ RIME_CONFIG_BRANCH=""
 RIME_CONFIG_DIR="${HOME}/.local/share/fcitx5/rime"
 GPU_TYPE="auto" # auto / intel / amd / nvidia / vmware / virtio / qxl / virtualbox / none
 VMWARE_HYPRLAND_MONITOR_MODE="1920x1080@60"
-VMWARE_FORCE_SOFTWARE_RENDERER=0
+# VMware SVGA3D can pass EGL detection but still fail native Wayland GL clients.
+# Default to llvmpipe so Alacritty/Neovide work with or without VMware 3D acceleration.
+VMWARE_FORCE_SOFTWARE_RENDERER=1
 VM_HYPRLAND_MONITOR_MODE="1920x1080@60"
 VM_HYPRLAND_DYNAMIC_RESIZE=1
 VM_HYPRLAND_LOW_LATENCY=1
