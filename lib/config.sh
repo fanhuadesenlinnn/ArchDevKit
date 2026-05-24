@@ -338,7 +338,7 @@ validate_config() {
     validate_port_var MIHOMO_CONTROLLER_PORT "Mihomo 控制接口"
     validate_mihomo_dns_listen
     validate_source_reference MIHOMO_CONFIG_SOURCE "Mihomo 配置来源"
-    if [[ ( "${ENABLE_PROXY:-0}" -eq 1 || "${TARGET:-}" == "proxy" ) && \
+    if [[ ( "${TARGET:-}" == "proxy" || ( "${TARGET:-}" =~ ^(dev|workstation)$ && "${ENABLE_PROXY:-0}" -eq 1 ) ) && \
           "${MIHOMO_CONTROLLER_HOST:-127.0.0.1}" == "0.0.0.0" && -z "${MIHOMO_SECRET:-}" ]]; then
       add_config_warning "Mihomo 控制接口监听 0.0.0.0 且 secret 为空；这是当前默认值，但局域网可访问控制 API"
     fi

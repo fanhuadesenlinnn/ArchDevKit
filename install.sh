@@ -1155,12 +1155,35 @@ ask_choice_default() {
   done
 }
 
+menu_target_overview() {
+  echo
+  echo "[可安装模块]"
+  printf "  %-12s %s\n" "base" "基础环境：base-devel、curl、wget、jq、rg、fd、fzf、openssh 等常用工具"
+  printf "  %-12s %s\n" "dns" "系统 DNS：配置 systemd-resolved、NetworkManager DNS 后端和国内/国外 fallback DNS"
+  printf "  %-12s %s\n" "archlinuxcn" "软件源：启用 archlinuxcn 源、keyring 和可选 mirrorlist"
+  printf "  %-12s %s\n" "git" "Git 环境：安装 git、gh、openssh，并写入基础 Git 配置"
+  printf "  %-12s %s\n" "runtime" "开发运行时：安装 nodejs、npm、python、go、mise、corepack，并配置国内镜像"
+  printf "  %-12s %s\n" "nvim" "Neovim：安装 Neovim，拉取个人配置，并按需同步插件"
+  printf "  %-12s %s\n" "docker" "Docker：安装 docker/compose，配置镜像源、服务和用户组"
+  printf "  %-12s %s\n" "fonts" "字体：中文字体、Emoji、Nerd Font、Monaco 和 fontconfig/GTK 字体设置"
+  printf "  %-12s %s\n" "shell" "Shell：安装 Zsh、Oh My Zsh、Powerlevel10k、插件和默认 shell 设置"
+  printf "  %-12s %s\n" "proxy" "代理：安装 Mihomo 或 sing-box，配置 MetaCubeXD 和 shell 代理环境模板"
+  printf "  %-12s %s\n" "desktop" "桌面：安装 Hyprland、SDDM、Fcitx5/Rime、浏览器、终端和 hyprdots 配置"
+  echo
+  echo "[组合目标]"
+  printf "  %-12s %s\n" "dev" "开发环境套餐：base + archlinuxcn + dns + git + runtime + nvim + fonts + shell + proxy"
+  printf "  %-12s %s\n" "workstation" "完整工作站套餐：dev + desktop"
+  printf "  %-12s %s\n" "custom" "自定义入口：先选一个起点，再按后续问题微调关键开关"
+  echo
+}
+
 show_menu() {
   clear || true
   echo "----------------------------------------------------------"
   echo "[ArchDevKit 交互式安装向导]"
   echo "直接回车会使用 install_vars 中的默认值。"
   echo "----------------------------------------------------------"
+  menu_target_overview
 
   TARGET="$(ask_choice_default "选择安装目标" "${TARGET}" "base dev workstation custom dns archlinuxcn git runtime nvim docker fonts shell desktop proxy")"
   if [[ "${TARGET}" == "custom" ]]; then
