@@ -230,7 +230,6 @@ MIHOMO_CONFIG_DIR="/etc/mihomo"
 MIHOMO_CONFIG_FILE="${MIHOMO_CONFIG_DIR}/config.yaml"
 MIHOMO_STATE_DIR="/var/lib/mihomo"
 MIHOMO_EXTERNAL_UI_DIR="${MIHOMO_STATE_DIR}/ui"
-MIHOMO_RULE_PROVIDER_URL_PREFIX="${GITHUB_PROXY}"
 
 ENABLE_METACUBEXD=1 # 1=安装 MetaCubeXD 面板，0=不安装面板
 ```
@@ -265,7 +264,9 @@ Mihomo 会按系统级服务方式安装：
 
 默认 Mihomo 配置模板来自 `files/mihomo/config.yaml.tpl`，基于日常大陆网络、AI 服务、流媒体、GitHub、游戏平台、广告拦截和懒猫微服兼容整理。
 模板只保留一个机场订阅示例：`proxy-providers.airport.url`。不在模板里写任何示例节点，所有节点都通过订阅连接拉取到 `proxy-providers` 后供策略组使用。
-规则提供者默认会把 `raw.githubusercontent.com` 地址加上 `MIHOMO_RULE_PROVIDER_URL_PREFIX`，减少中国大陆网络下规则更新失败；如果希望直连规则源，可把该变量设为空。
+订阅 provider 默认 `proxy: DIRECT`，并为 DIRECT 出口单独配置国内 DNS，避免首次启动时订阅下载落入 `MATCH -> 节点选择` 的自举循环。
+模板会把 `babadafafafafa.cn` 这类自建订阅/资源域名放到静态直连和国内 DNS 策略里；如果换成其他订阅域名，建议同步调整模板中的启动期直连域名。
+Mihomo 规则提供者使用原始 URL，不叠加 GitHub 代理前缀，也不配置规则资源代理；规则源下载按 Mihomo 常规出站链路处理。模板中预留了 `geox-url` 注释位置，后续如需固定 GeoIP / GeoSite / MMDB / ASN 下载源，可在生成后的配置中手动启用。
 默认 sing-box 配置模板来自 `files/sing-box/config.json.tpl`。
 
 MetaCubeXD 面板安装后会复制到 `MIHOMO_EXTERNAL_UI_DIR`，默认是 `/var/lib/mihomo/ui`，生成的 Mihomo 配置中 `external-ui` 也会指向这个目录。

@@ -165,7 +165,7 @@ MIHOMO_SERVICE_NAME="mihomo.service"
 MIHOMO_CONFIG_DIR="/etc/mihomo"
 MIHOMO_CONFIG_FILE="${MIHOMO_CONFIG_DIR}/config.yaml"
 MIHOMO_CONFIG_SOURCE="${SCRIPT_DIR}/files/mihomo/config.yaml.tpl" # 本地 config.yaml/.tpl 或 URL；为空则渲染默认模板
-MIHOMO_RULE_PROVIDER_URL_PREFIX="${GITHUB_PROXY}" # 为空=规则源直连；默认配合 GitHub 代理拉取 raw.githubusercontent.com 规则
+# Mihomo 规则源和 GEO 数据源保持原始 URL，不通过 GITHUB_PROXY 生成代理前缀。
 MIHOMO_MIXED_PORT=7890
 MIHOMO_ALLOW_LAN=0
 MIHOMO_BIND_ADDRESS="0.0.0.0"

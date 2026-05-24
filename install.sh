@@ -240,7 +240,7 @@ show_config() {
   echo "Mihomo 配置目录:      ${MIHOMO_CONFIG_DIR:-/etc/mihomo}"
   echo "Mihomo 配置文件:      ${MIHOMO_CONFIG_FILE:-/etc/mihomo/config.yaml}"
   echo "Mihomo 配置来源:      ${MIHOMO_CONFIG_SOURCE:-生成基础模板}"
-  echo "Mihomo 规则源前缀:    $(mihomo_rule_provider_url_prefix)"
+  echo "Mihomo 规则源:        原始 URL（不配置代理前缀）"
   echo "Mihomo mixed-port:    ${MIHOMO_MIXED_PORT}"
   echo "Mihomo allow-lan:     $(bool_text "${MIHOMO_ALLOW_LAN}")"
   echo "Mihomo bind-address:  ${MIHOMO_BIND_ADDRESS}"
@@ -524,7 +524,7 @@ show_plan() {
     if [[ "${PROXY_CORE:-mihomo}" == "mihomo" ]]; then
       echo "  Mihomo 配置:      ${MIHOMO_CONFIG_FILE:-/etc/mihomo/config.yaml}"
       echo "  Mihomo 服务:      ${MIHOMO_SERVICE_NAME:-mihomo.service}"
-      echo "  规则源前缀:       $(mihomo_rule_provider_url_prefix)"
+      echo "  规则源:           原始 URL（不配置代理前缀）"
       echo "  MetaCubeXD:       $(bool_text "${ENABLE_METACUBEXD}")"
     else
       echo "  sing-box 配置:    ${SING_BOX_CONFIG_FILE:-${HOME}/.config/sing-box/config.json}"

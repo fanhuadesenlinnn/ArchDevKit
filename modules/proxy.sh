@@ -220,13 +220,6 @@ mihomo_safe_external_ui_dir() {
   esac
 }
 
-mihomo_rule_provider_url_prefix() {
-  local prefix="${MIHOMO_RULE_PROVIDER_URL_PREFIX:-}"
-  [[ "${ENABLE_GITHUB_PROXY:-0}" -eq 1 ]] || return 0
-  [[ -n "${prefix}" ]] || return 0
-  normalize_url_slash "${prefix}"
-}
-
 warn_mihomo_exposure() {
   if [[ "${MIHOMO_CONTROLLER_HOST:-127.0.0.1}" == "0.0.0.0" && -z "${MIHOMO_SECRET:-}" ]]; then
     log_warn "Mihomo 控制接口监听 0.0.0.0 且 MIHOMO_SECRET 为空，局域网可访问控制 API"
@@ -278,12 +271,11 @@ render_proxy_template_root() {
 
 render_mihomo_config_template() {
   local template="$1" target="$2"
-  local allow_lan secret external_ui_line external_ui_dir rule_provider_prefix
+  local allow_lan secret external_ui_line external_ui_dir
 
   warn_mihomo_exposure
   allow_lan="$(sed_escape_replacement "$(bool_to_yaml "${MIHOMO_ALLOW_LAN:-0}")")"
   secret="$(sed_escape_replacement "$(quote_yaml_string "${MIHOMO_SECRET:-}")")"
-  rule_provider_prefix="$(sed_escape_replacement "$(mihomo_rule_provider_url_prefix)")"
   if [[ "${ENABLE_METACUBEXD:-0}" -eq 1 ]]; then
     external_ui_dir="$(mihomo_safe_external_ui_dir)"
     external_ui_line="$(sed_escape_replacement "external-ui: ${external_ui_dir}")"
@@ -299,7 +291,6 @@ render_mihomo_config_template() {
     -e "s/__MIHOMO_CONTROLLER_PORT__/$(sed_escape_replacement "${MIHOMO_CONTROLLER_PORT:-9090}")/g" \
     -e "s/__MIHOMO_DNS_LISTEN__/$(sed_escape_replacement "${MIHOMO_DNS_LISTEN:-127.0.0.1:1053}")/g" \
     -e "s/__MIHOMO_SECRET_YAML__/${secret}/g" \
-    -e "s/__MIHOMO_RULE_PROVIDER_URL_PREFIX__/${rule_provider_prefix}/g" \
     -e "s/__METACUBEXD_EXTERNAL_UI_LINE__/${external_ui_line}/g"
 }
 
@@ -620,7 +611,7 @@ verify_proxy_env() {
       log_info "Mihomo 系统服务：${MIHOMO_SERVICE_NAME:-mihomo.service}"
       log_info "Mihomo mixed-port：${MIHOMO_BIND_ADDRESS:-127.0.0.1}:${MIHOMO_MIXED_PORT:-7890}"
       log_info "Mihomo 控制接口：http://${MIHOMO_CONTROLLER_HOST:-127.0.0.1}:${MIHOMO_CONTROLLER_PORT:-9090}"
-      log_info "Mihomo 规则源前缀：$(mihomo_rule_provider_url_prefix)"
+      log_info "Mihomo 规则源：原始 URL（不配置代理前缀）"
       if [[ "${ENABLE_METACUBEXD:-0}" -eq 1 ]]; then
         log_info "MetaCubeXD 面板由 Mihomo 托管：http://${MIHOMO_CONTROLLER_HOST:-127.0.0.1}:${MIHOMO_CONTROLLER_PORT:-9090}/ui/"
         log_info "MetaCubeXD UI 目录：$(mihomo_safe_external_ui_dir)"
