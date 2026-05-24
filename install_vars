@@ -20,6 +20,9 @@ PIP_INDEX_URL="https://pypi.tuna.tsinghua.edu.cn/simple"
 PIP_TRUSTED_HOST="pypi.tuna.tsinghua.edu.cn"
 NODE_MIRROR_URL="https://npmmirror.com/mirrors/node/"
 GO_DOWNLOAD_MIRROR="https://mirrors.aliyun.com/golang"
+GO_REPO_URL="https://github.com/golang/go"
+PYTHON_BUILD_MIRROR_URL="https://registry.npmmirror.com/-/binary/python/"
+PYENV_REPO_URL="https://github.com/pyenv/pyenv.git"
 ENABLE_MISE_GITHUB_URL_REPLACEMENT=1
 
 # =========================

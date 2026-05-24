@@ -37,6 +37,10 @@ ArchDevKit - Arch Linux 工作站初始化工具
   --no-china                不配置 npm/pip 国内源
   --no-github-proxy         不使用 GitHub 代理
   --github-proxy URL        指定 GitHub 代理
+  --node-mirror URL         指定 mise Node.js 下载镜像
+  --go-mirror URL           指定 mise Go SDK 下载镜像
+  --python-build-mirror URL 指定 python-build 下载镜像
+  --pyenv-repo URL          指定 mise Python 使用的 pyenv 仓库
   --dns                     dev/workstation 中配置系统 DNS
   --no-dns                  dev/workstation 中跳过系统 DNS
   --dns-over-tls MODE       systemd-resolved DNSOverTLS：no / opportunistic / yes
@@ -83,6 +87,14 @@ parse_args() {
       --no-github-proxy) ENABLE_GITHUB_PROXY=0; shift ;;
       --github-proxy) GITHUB_PROXY="${2:-}"; ENABLE_GITHUB_PROXY=1; shift 2 ;;
       --github-proxy=*) GITHUB_PROXY="${1#*=}"; ENABLE_GITHUB_PROXY=1; shift ;;
+      --node-mirror) NODE_MIRROR_URL="${2:-}"; shift 2 ;;
+      --node-mirror=*) NODE_MIRROR_URL="${1#*=}"; shift ;;
+      --go-mirror) GO_DOWNLOAD_MIRROR="${2:-}"; shift 2 ;;
+      --go-mirror=*) GO_DOWNLOAD_MIRROR="${1#*=}"; shift ;;
+      --python-build-mirror) PYTHON_BUILD_MIRROR_URL="${2:-}"; shift 2 ;;
+      --python-build-mirror=*) PYTHON_BUILD_MIRROR_URL="${1#*=}"; shift ;;
+      --pyenv-repo) PYENV_REPO_URL="${2:-}"; shift 2 ;;
+      --pyenv-repo=*) PYENV_REPO_URL="${1#*=}"; shift ;;
       --dns) ENABLE_DNS=1; shift ;;
       --no-dns) ENABLE_DNS=0; shift ;;
       --dns-over-tls) DNS_OVER_TLS="${2:-no}"; shift 2 ;;
@@ -157,6 +169,10 @@ show_config() {
   echo "启用国内源:           $(bool_text "${ENABLE_CHINA_MIRROR}")"
   echo "npm 源:               ${NPM_REGISTRY}"
   echo "pip 源:               ${PIP_INDEX_URL}"
+  echo "mise Node 镜像:       ${NODE_MIRROR_URL}"
+  echo "mise Go 镜像:         ${GO_DOWNLOAD_MIRROR}"
+  echo "python-build 镜像:    ${PYTHON_BUILD_MIRROR_URL}"
+  echo "pyenv 实际仓库:       $(mise_pyenv_repo_url)"
   echo "启用 GitHub 代理:     $(bool_text "${ENABLE_GITHUB_PROXY}")"
   echo "GitHub 代理地址:      ${GITHUB_PROXY}"
   echo "系统 DNS:             $(bool_text "${ENABLE_DNS}")"
@@ -441,6 +457,10 @@ show_plan() {
     echo "  Python/Go:        ${PYTHON_VERSION} / ${GO_VERSION}"
     echo "  npm 源:           ${NPM_REGISTRY}"
     echo "  pip 源:           ${PIP_INDEX_URL}"
+    echo "  Node 下载镜像:    ${NODE_MIRROR_URL}"
+    echo "  Go 下载镜像:      ${GO_DOWNLOAD_MIRROR}"
+    echo "  Python 下载镜像:  ${PYTHON_BUILD_MIRROR_URL}"
+    echo "  pyenv 实际仓库:   $(mise_pyenv_repo_url)"
     echo "  Corepack:         $(bool_text "${ENABLE_COREPACK}")"
   fi
   if plan_uses_github_proxy "${modules_text}"; then

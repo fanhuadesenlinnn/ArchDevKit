@@ -92,7 +92,13 @@ bash install.sh config
 
 - npm 源：`https://registry.npmmirror.com`
 - pip 源：`https://pypi.tuna.tsinghua.edu.cn/simple`
+- mise Node.js 下载镜像：`https://npmmirror.com/mirrors/node/`
+- mise Go SDK 下载镜像：`https://mirrors.aliyun.com/golang`
+- python-build 下载镜像：`https://registry.npmmirror.com/-/binary/python/`
+- mise Python 的 pyenv 仓库默认走已配置的 GitHub 代理
 - GitHub 代理：`https://hubproxy.babadafafafafa.cn/`
+
+runtime 模块会同时写入 `~/.config/archdevkit/mise-china.env`，并让 `~/.bashrc` / `~/.zshrc` 自动加载这些环境变量。这样后续手动执行 `mise use -g python@3.13`、`mise use -g go@1.23` 时，也会继续优先使用国内可用的下载源；如果当前 mise 版本不支持某个 setting，脚本会跳过写入该 setting，改用环境变量兜底，避免出现 `Unknown setting` 报错。
 
 关闭 GitHub 代理：
 
@@ -114,6 +120,10 @@ bash install.sh nvim --github-proxy https://gh-proxy.com/
 --no-china                不配置 npm/pip 国内源
 --no-github-proxy         不使用 GitHub 代理
 --github-proxy URL        指定 GitHub 代理
+--node-mirror URL         指定 mise Node.js 下载镜像
+--go-mirror URL           指定 mise Go SDK 下载镜像
+--python-build-mirror URL 指定 python-build 下载镜像
+--pyenv-repo URL          指定 mise Python 使用的 pyenv 仓库
 --dns                     dev/workstation 中配置系统 DNS
 --no-dns                  dev/workstation 中跳过系统 DNS
 --dns-over-tls MODE       systemd-resolved DNSOverTLS：no / opportunistic / yes
