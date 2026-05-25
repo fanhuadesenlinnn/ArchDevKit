@@ -112,6 +112,7 @@ show_menu() {
       "dns|系统 DNS：systemd-resolved、NetworkManager DNS 后端和 fallback DNS" \
       "archlinuxcn|软件源：archlinuxcn 源、keyring 和可选 mirrorlist" \
       "git|Git 环境：git、gh、openssh 和基础 Git 配置" \
+      "ops-toolkit|运维脚本：ops-toolkit 仓库和稳定命令入口" \
       "runtime|开发运行时：nodejs、npm、python、go、mise 和国内镜像" \
       "nvim|Neovim：安装 Neovim、个人配置和可选插件同步" \
       "docker|Docker：docker/compose、镜像源、服务和用户组" \
@@ -129,6 +130,7 @@ show_menu() {
         "dns|只配置系统 DNS" \
         "archlinuxcn|只配置 archlinuxcn 源" \
         "git|只安装 Git 环境" \
+        "ops-toolkit|只安装 Ops Toolkit 运维脚本" \
         "runtime|只安装开发运行时" \
         "nvim|只安装 Neovim" \
         "docker|只安装 Docker" \
@@ -142,6 +144,7 @@ show_menu() {
   if [[ "${TARGET}" == "dev" || "${TARGET}" == "workstation" ]]; then
     INSTALL_ARCHLINUXCN="$(ask_bool_default "启用 archlinuxcn 源" "${INSTALL_ARCHLINUXCN:-1}")"
     ENABLE_DNS="$(ask_bool_default "配置系统 DNS" "${ENABLE_DNS:-1}")"
+    ENABLE_OPS_TOOLKIT="$(ask_bool_default "安装 Ops Toolkit" "${ENABLE_OPS_TOOLKIT:-1}")"
     ENABLE_PROXY="$(ask_bool_default "安装 Proxy 模块" "${ENABLE_PROXY:-1}")"
   fi
 

@@ -16,6 +16,7 @@ source "${SCRIPT_DIR}/modules/base.sh"
 source "${SCRIPT_DIR}/modules/dns.sh"
 source "${SCRIPT_DIR}/modules/archlinuxcn.sh"
 source "${SCRIPT_DIR}/modules/git.sh"
+source "${SCRIPT_DIR}/modules/ops_toolkit.sh"
 source "${SCRIPT_DIR}/modules/runtime.sh"
 source "${SCRIPT_DIR}/modules/nvim.sh"
 source "${SCRIPT_DIR}/modules/docker.sh"
@@ -51,8 +52,8 @@ ArchDevKit - Arch Linux 工作站初始化工具
 用法：
   bash install.sh
   bash install.sh menu
-  bash install.sh plan [base|dns|archlinuxcn|git|runtime|nvim|docker|fonts|shell|desktop|proxy|dev|workstation]
-  bash install.sh install [base|dns|archlinuxcn|git|runtime|nvim|docker|fonts|shell|desktop|proxy|dev|workstation]
+  bash install.sh plan [base|dns|archlinuxcn|git|ops-toolkit|runtime|nvim|docker|fonts|shell|desktop|proxy|dev|workstation]
+  bash install.sh install [base|dns|archlinuxcn|git|ops-toolkit|runtime|nvim|docker|fonts|shell|desktop|proxy|dev|workstation]
   bash install.sh status [module] [--verbose]
   bash install.sh doctor
   bash install.sh config [show|init|validate]
@@ -81,6 +82,12 @@ ArchDevKit - Arch Linux 工作站初始化工具
   --pyenv-repo URL          指定 mise Python 使用的 pyenv 仓库
   --dns                     dev/workstation 中配置系统 DNS
   --no-dns                  dev/workstation 中跳过系统 DNS
+  --with-ops-toolkit        dev/workstation 中安装 Ops Toolkit
+  --no-ops-toolkit          dev/workstation 中跳过 Ops Toolkit
+  --ops-toolkit-repo URL    指定 Ops Toolkit 仓库
+  --ops-toolkit-branch NAME 指定 Ops Toolkit 分支
+  --ops-toolkit-dir PATH    指定 Ops Toolkit 本地仓库目录
+  --ops-bin-dir PATH        指定 Ops Toolkit 命令目录
   --dns-over-tls MODE       systemd-resolved DNSOverTLS：no / opportunistic / yes
   --repo URL                指定 Neovim 配置仓库
   --branch NAME             指定 Neovim 配置分支
@@ -138,7 +145,7 @@ parse_args() {
           die "all 只能用于 status 或 reset-state"
         fi
         ;;
-      base|dns|archlinuxcn|git|runtime|nvim|docker|fonts|shell|zsh|desktop|hyprland|proxy|dev|workstation)
+      base|dns|archlinuxcn|git|ops|ops-toolkit|ops_toolkit|runtime|nvim|docker|fonts|shell|zsh|desktop|hyprland|proxy|dev|workstation)
         TARGET="${token}"
         TARGET_SET=1
         [[ "${ACTION}" == "menu" ]] && ACTION="install"
@@ -177,6 +184,16 @@ parse_args() {
       --pyenv-repo=*) PYENV_REPO_URL="${1#*=}"; shift ;;
       --dns) ENABLE_DNS=1; shift ;;
       --no-dns) ENABLE_DNS=0; shift ;;
+      --with-ops-toolkit) ENABLE_OPS_TOOLKIT=1; shift ;;
+      --no-ops-toolkit) ENABLE_OPS_TOOLKIT=0; shift ;;
+      --ops-toolkit-repo) OPS_TOOLKIT_REPO="${2:-}"; ENABLE_OPS_TOOLKIT=1; shift 2 ;;
+      --ops-toolkit-repo=*) OPS_TOOLKIT_REPO="${1#*=}"; ENABLE_OPS_TOOLKIT=1; shift ;;
+      --ops-toolkit-branch) OPS_TOOLKIT_BRANCH="${2:-}"; ENABLE_OPS_TOOLKIT=1; shift 2 ;;
+      --ops-toolkit-branch=*) OPS_TOOLKIT_BRANCH="${1#*=}"; ENABLE_OPS_TOOLKIT=1; shift ;;
+      --ops-toolkit-dir) OPS_TOOLKIT_DIR="${2:-}"; shift 2 ;;
+      --ops-toolkit-dir=*) OPS_TOOLKIT_DIR="${1#*=}"; shift ;;
+      --ops-bin-dir) OPS_TOOLKIT_BIN_DIR="${2:-}"; shift 2 ;;
+      --ops-bin-dir=*) OPS_TOOLKIT_BIN_DIR="${1#*=}"; shift ;;
       --dns-over-tls) DNS_OVER_TLS="${2:-no}"; shift 2 ;;
       --dns-over-tls=*) DNS_OVER_TLS="${1#*=}"; shift ;;
       --repo) NVIM_REPO="${2:-}"; shift 2 ;;

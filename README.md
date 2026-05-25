@@ -57,6 +57,7 @@ bash install.sh dev
 # 只安装某个模块
 bash install.sh nvim
 bash install.sh docker
+bash install.sh ops-toolkit
 bash install.sh desktop
 bash install.sh proxy
 
@@ -92,6 +93,7 @@ bash install.sh install proxy
 | `dns` | systemd-resolved 系统 DNS |
 | `archlinuxcn` | archlinuxcn 软件源 |
 | `git` | Git、GitHub CLI、OpenSSH 和基础 Git 配置 |
+| `ops-toolkit` | 克隆可更新的运维脚本仓库，并写入稳定命令入口 |
 | `runtime` | 系统 Node.js/npm/Python/Go 和 mise |
 | `nvim` | Neovim 和个人配置 |
 | `docker` | Docker、Docker Compose、镜像源和用户组 |
@@ -105,7 +107,7 @@ bash install.sh install proxy
 默认套餐：
 
 ```text
-dev = base + archlinuxcn + dns + git + runtime + nvim + docker + fonts + shell + proxy
+dev = base + archlinuxcn + dns + git + ops-toolkit + runtime + nvim + docker + fonts + shell + proxy
 workstation = dev + desktop
 ```
 
@@ -163,6 +165,7 @@ bash install.sh plan workstation --no-config-file
 --no-china         不配置 npm/pip 国内源
 --no-github-proxy  不使用 GitHub 代理
 --no-dns           dev/workstation 中跳过 DNS
+--no-ops-toolkit   dev/workstation 中跳过 Ops Toolkit
 --no-proxy         dev/workstation 中跳过 Proxy
 --proxy-core NAME  指定代理核心：mihomo / sing-box
 --gpu TYPE         指定 GPU 类型：auto / intel / amd / nvidia / vmware / virtio / qxl / virtualbox / none
@@ -193,6 +196,29 @@ Proxy 模块默认使用 Mihomo：
 - 服务：`sudo systemctl status mihomo.service`
 
 Mihomo 模板不会写入真实节点、订阅 token 或密钥；规则依赖的外部资源使用原始 URL，不额外套 GitHub 代理前缀。订阅 provider 默认直连，避免首次启动时出现代理自举循环。
+
+## Ops Toolkit
+
+`ops-toolkit` 模块会把 [ops-toolkit](https://github.com/fanhuadesenlinnn/ops-toolkit) 克隆到 `~/.local/share/ops-toolkit`，并在 `~/.local/bin` 写入稳定命令入口。
+
+常用方式：
+
+```bash
+ops list
+ops sshm --list
+ops linux-admin-toolkit --help
+
+# 安装时已有的 .sh 脚本也会生成同名命令
+sshm --list
+linux-admin-toolkit --help
+```
+
+后续脚本仓库更新时，只需要更新本地仓库；命令入口不变：
+
+```bash
+cd ~/.local/share/ops-toolkit
+git pull --ff-only
+```
 
 ## 桌面
 

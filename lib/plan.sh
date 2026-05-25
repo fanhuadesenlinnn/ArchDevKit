@@ -68,6 +68,9 @@ modules_for_dev() {
     modules="$(append_plan_module "${modules}" "dns")"
   fi
   modules="$(append_plan_module "${modules}" "git")"
+  if [[ "${ENABLE_OPS_TOOLKIT:-0}" -eq 1 ]]; then
+    modules="$(append_plan_module "${modules}" "ops-toolkit")"
+  fi
   modules="$(append_plan_module "${modules}" "runtime")"
   modules="$(append_plan_module "${modules}" "nvim")"
   modules="$(append_plan_module "${modules}" "docker")"
@@ -96,7 +99,7 @@ modules_for_workstation() {
 
 modules_for_target() {
   case "$1" in
-    base|dns|archlinuxcn|git|runtime|nvim|docker|fonts) module_key "$1" ;;
+    base|dns|archlinuxcn|git|ops|ops-toolkit|ops_toolkit|runtime|nvim|docker|fonts) module_key "$1" ;;
     shell|zsh) modules_for_shell ;;
     proxy) modules_for_proxy ;;
     desktop|hyprland) modules_for_desktop ;;
@@ -110,6 +113,7 @@ plan_uses_github_proxy() {
   local modules_text="$1"
 
   plan_has_module "${modules_text}" "nvim" && return 0
+  plan_has_module "${modules_text}" "ops-toolkit" && return 0
   if plan_has_module "${modules_text}" "shell" && shell_needs_repo_clone; then
     return 0
   fi
@@ -124,6 +128,7 @@ plan_needs_git_command() {
   local modules_text="$1"
 
   plan_has_module "${modules_text}" "nvim" && return 0
+  plan_has_module "${modules_text}" "ops-toolkit" && return 0
   if plan_has_module "${modules_text}" "shell" && shell_needs_repo_clone; then
     return 0
   fi
@@ -231,6 +236,12 @@ show_plan() {
     ! plan_has_module "${modules_text}" "git" && \
     ! plan_has_module "${modules_text}" "base"; then
     echo "  Git 命令依赖:     如缺失会按需安装 git 包"
+  fi
+  if plan_has_module "${modules_text}" "ops-toolkit"; then
+    echo "  Ops Toolkit 仓库: ${OPS_TOOLKIT_REPO}"
+    echo "  Ops Toolkit 实际: $(github_proxy_url "${OPS_TOOLKIT_REPO}")"
+    echo "  Ops Toolkit 目录: ${OPS_TOOLKIT_DIR}"
+    echo "  Ops 命令入口:     ${OPS_TOOLKIT_BIN_DIR}/${OPS_TOOLKIT_COMMAND}"
   fi
   if plan_has_module "${modules_text}" "nvim"; then
     echo "  Neovim 仓库:      ${NVIM_REPO}"

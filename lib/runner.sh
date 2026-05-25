@@ -83,6 +83,10 @@ show_summary() {
   if is_done "git"; then
     add_summary_tip "如需使用 GitHub CLI 登录，执行：gh auth login && gh auth setup-git。"
   fi
+  if is_done "ops_toolkit"; then
+    add_summary_tip "Ops Toolkit 命令入口：${OPS_TOOLKIT_COMMAND} list；仓库目录：${OPS_TOOLKIT_DIR}。"
+    add_summary_tip "后续脚本更新可执行：cd ${OPS_TOOLKIT_DIR} && git pull --ff-only，既有命令入口保持不变。"
+  fi
   if is_done "runtime"; then
     add_summary_tip "系统 Node.js/npm/Python/Go 已可直接使用；重新打开终端，或执行 exec \"\$SHELL\"，让 mise activation 生效。"
   fi

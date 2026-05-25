@@ -7,6 +7,7 @@ module_desc() {
     dns) echo "系统 DNS" ;;
     archlinuxcn) echo "archlinuxcn 软件源" ;;
     git) echo "Git / GitHub CLI" ;;
+    ops_toolkit) echo "Ops Toolkit 运维脚本命令" ;;
     runtime) echo "系统 Node/npm/Python/Go + mise 版本管理器" ;;
     nvim) echo "Neovim + 个人配置" ;;
     docker) echo "Docker / Compose" ;;
@@ -20,6 +21,7 @@ module_desc() {
 
 module_key() {
   case "$1" in
+    ops|ops-toolkit|ops_toolkit) echo "ops_toolkit" ;;
     shell|zsh) echo "shell_zsh" ;;
     desktop|hyprland) echo "desktop_hyprland" ;;
     *) echo "$1" ;;
@@ -30,12 +32,13 @@ module_display_key() {
   case "$(module_key "$1")" in
     shell_zsh) echo "shell" ;;
     desktop_hyprland) echo "desktop" ;;
+    ops_toolkit) echo "ops-toolkit" ;;
     *) module_key "$1" ;;
   esac
 }
 
 all_modules() {
-  echo "base dns archlinuxcn git runtime nvim docker fonts shell_zsh proxy desktop_hyprland"
+  echo "base dns archlinuxcn git ops_toolkit runtime nvim docker fonts shell_zsh proxy desktop_hyprland"
 }
 
 module_impacts() {
@@ -57,6 +60,11 @@ module_impacts() {
     git)
       echo "全局 git config"
       echo "git / github-cli / openssh"
+      ;;
+    ops_toolkit)
+      echo "${OPS_TOOLKIT_DIR}"
+      echo "${OPS_TOOLKIT_BIN_DIR}/${OPS_TOOLKIT_COMMAND}"
+      echo "${OPS_TOOLKIT_BIN_DIR}/<script-name>"
       ;;
     runtime)
       echo "${HOME}/.bashrc"
@@ -135,6 +143,10 @@ module_config_fingerprint() {
           "${RUNTIME_MANAGER}" "${NODE_VERSION}" "${PYTHON_VERSION}" "${GO_VERSION}" "${NPM_VERSION}"
         printf 'mirrors=%s|%s|%s\n' "${NODE_MIRROR_URL}" "${GO_DOWNLOAD_MIRROR}" "${PYTHON_BUILD_MIRROR_URL}"
         ;;
+      ops_toolkit)
+        printf 'repo=%s\nbranch=%s\ndir=%s\nbin=%s\ncommand=%s\n' \
+          "${OPS_TOOLKIT_REPO}" "${OPS_TOOLKIT_BRANCH:-}" "${OPS_TOOLKIT_DIR}" "${OPS_TOOLKIT_BIN_DIR}" "${OPS_TOOLKIT_COMMAND}"
+        ;;
       nvim)
         printf 'repo=%s\nbranch=%s\nsync=%s\n' "${NVIM_REPO}" "${NVIM_BRANCH:-}" "${SYNC_NVIM_PLUGINS:-0}"
         ;;
@@ -173,6 +185,7 @@ module_quick_verify() {
     dns) [[ -f /etc/systemd/resolved.conf.d/90-archdevkit-dns.conf ]] ;;
     archlinuxcn) [[ -r /etc/pacman.conf ]] && grep -q '^\[archlinuxcn\]' /etc/pacman.conf ;;
     git) need_cmd git && need_cmd gh ;;
+    ops_toolkit) [[ -d "${OPS_TOOLKIT_DIR}/.git" && -x "${OPS_TOOLKIT_BIN_DIR}/${OPS_TOOLKIT_COMMAND}" ]] ;;
     runtime) need_cmd mise && need_cmd node && need_cmd npm && need_cmd python && need_cmd go ;;
     nvim) need_cmd nvim && [[ -d "${NVIM_CONFIG_DIR}" ]] ;;
     docker) need_cmd docker ;;
@@ -195,6 +208,7 @@ module_install_func() {
     dns) install_dns_env ;;
     archlinuxcn) install_archlinuxcn ;;
     git) install_git_env ;;
+    ops_toolkit) install_ops_toolkit ;;
     runtime) install_runtime_env ;;
     nvim) install_nvim_env ;;
     docker) install_docker_env ;;
@@ -213,6 +227,7 @@ menu_target_overview() {
   printf "  %-12s %s\n" "dns" "系统 DNS：配置 systemd-resolved、NetworkManager DNS 后端和国内/国外 fallback DNS"
   printf "  %-12s %s\n" "archlinuxcn" "软件源：启用 archlinuxcn 源、keyring 和可选 mirrorlist"
   printf "  %-12s %s\n" "git" "Git 环境：安装 git、gh、openssh，并写入基础 Git 配置"
+  printf "  %-12s %s\n" "ops-toolkit" "运维脚本：克隆 ops-toolkit，并写入稳定命令入口"
   printf "  %-12s %s\n" "runtime" "开发运行时：安装 nodejs、npm、python、go、mise、corepack，并配置国内镜像"
   printf "  %-12s %s\n" "nvim" "Neovim：安装 Neovim，拉取个人配置，并按需同步插件"
   printf "  %-12s %s\n" "docker" "Docker：安装 docker/compose，配置镜像源、服务和用户组"
@@ -222,7 +237,7 @@ menu_target_overview() {
   printf "  %-12s %s\n" "desktop" "桌面：安装 Hyprland、SDDM、Fcitx5/Rime、浏览器、终端和 hyprdots 配置"
   echo
   echo "[组合目标]"
-  printf "  %-12s %s\n" "dev" "开发环境套餐：base + archlinuxcn + dns + git + runtime + nvim + docker + fonts + shell + proxy"
+  printf "  %-12s %s\n" "dev" "开发环境套餐：base + archlinuxcn + dns + git + ops-toolkit + runtime + nvim + docker + fonts + shell + proxy"
   printf "  %-12s %s\n" "workstation" "完整工作站套餐：dev + desktop"
   printf "  %-12s %s\n" "custom" "自定义入口：先选一个起点，再按后续问题微调关键开关"
   echo

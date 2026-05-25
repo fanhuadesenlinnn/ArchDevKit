@@ -38,7 +38,7 @@ ArchDevKit 的安装器按“入口薄、模块深、配置先行”的方向演
 
 9. `modules/*.sh`
 
-   每个安装模块维护自己的安装、验证、依赖判断和配置渲染逻辑。例如 Proxy 模块负责 Mihomo/sing-box，DNS 模块负责 systemd-resolved。
+   每个安装模块维护自己的安装、验证、依赖判断和配置渲染逻辑。例如 Proxy 模块负责 Mihomo/sing-box，DNS 模块负责 systemd-resolved，Ops Toolkit 模块负责可更新运维脚本仓库和稳定命令入口。
 
 10. `modules/proxy/*.sh`
 

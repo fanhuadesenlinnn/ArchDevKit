@@ -25,7 +25,7 @@ echo "==> module registry"
 bash install.sh status --json | ruby -rjson -e '
   data = JSON.parse(STDIN.read)
   keys = data.fetch("modules").map { |m| m.fetch("key") }
-  expected = %w[base dns archlinuxcn git runtime nvim docker fonts shell_zsh proxy desktop_hyprland]
+  expected = %w[base dns archlinuxcn git ops_toolkit runtime nvim docker fonts shell_zsh proxy desktop_hyprland]
   raise "registry mismatch" unless keys == expected
 '
 bash install.sh plan base --json | ruby -rjson -e '
@@ -37,7 +37,9 @@ bash install.sh plan base --json | ruby -rjson -e '
 bash install.sh plan dev --json | ruby -rjson -e '
   data = JSON.parse(STDIN.read)
   keys = data.fetch("modules").map { |m| m.fetch("key") }
+  raise "dev missing ops_toolkit" unless keys.include?("ops_toolkit")
   raise "dev missing docker" unless keys.include?("docker")
+  raise "ops order mismatch" unless keys.index("git") < keys.index("ops_toolkit") && keys.index("ops_toolkit") < keys.index("runtime")
   raise "docker order mismatch" unless keys.index("nvim") < keys.index("docker") && keys.index("docker") < keys.index("fonts")
 '
 
@@ -47,6 +49,7 @@ mkdir -p "${tmp_home}/.config/archdevkit"
 cat > "${tmp_home}/.config/archdevkit/config.env" <<'EOF'
 ARCHDEVKIT_DEFAULT_PROFILE=dev
 ENABLE_PROXY=0
+ENABLE_OPS_TOOLKIT=0
 DNS_SERVERS=223.5.5.5,119.29.29.29
 DOCKER_MIRRORS=https://mirror.example.com,https://mirror2.example.com
 EOF
@@ -54,6 +57,7 @@ HOME="${tmp_home}" bash install.sh plan --json | ruby -rjson -e '
   data = JSON.parse(STDIN.read)
   raise "target mismatch" unless data.fetch("target") == "dev"
   keys = data.fetch("modules").map { |m| m.fetch("key") }
+  raise "ops_toolkit should be skipped" if keys.include?("ops_toolkit")
   raise "proxy should be skipped" if keys.include?("proxy")
   raise "missing dns" unless keys.include?("dns")
 '
@@ -66,6 +70,7 @@ HOME="${tmp_home}" bash install.sh config init --config-file "${config_file}"
 [[ -f "${config_file}" ]] || { echo "missing generated config"; exit 1; }
 grep -q '^ARCHDEVKIT_DEFAULT_PROFILE=' "${config_file}" || { echo "missing default profile config"; exit 1; }
 grep -q '^DNS_SERVERS=' "${config_file}" || { echo "missing dns list config"; exit 1; }
+grep -q '^OPS_TOOLKIT_REPO=' "${config_file}" || { echo "missing ops toolkit config"; exit 1; }
 config_validate_output="$(HOME="${tmp_home}" bash install.sh config validate --config-file "${config_file}")"
 [[ "${config_validate_output}" == *"配置校验通过"* ]] || { echo "missing config validate"; exit 1; }
 config_show_output="$(HOME="${tmp_home}" bash install.sh config show --config-file "${config_file}")"
@@ -178,6 +183,38 @@ base_tool_output="$(
 )"
 [[ "${base_tool_output}" == *"[基础工具状态]"* ]] || { echo "missing base tool table"; exit 1; }
 [[ "${base_tool_output}" == *"git"* ]] || { echo "missing git in base tool table"; exit 1; }
+
+echo "==> ops toolkit module"
+ops_tmp="$(mktemp -d)"
+OPS_TMP="${ops_tmp}" bash -c '
+  set -Eeuo pipefail
+  SCRIPT_DIR="$PWD"
+  source install_vars
+  source lib/common.sh
+  source lib/files.sh
+  source lib/packages.sh
+  source modules/ops_toolkit.sh
+  OPS_TOOLKIT_DIR="${OPS_TMP}/repo"
+  OPS_TOOLKIT_BIN_DIR="${OPS_TMP}/bin"
+  OPS_TOOLKIT_COMMAND=ops
+  mkdir -p "${OPS_TOOLKIT_DIR}/.git" "${OPS_TOOLKIT_BIN_DIR}"
+  cat > "${OPS_TOOLKIT_DIR}/sshm.sh" <<'\''EOF'\''
+#!/usr/bin/env bash
+printf "sshm:%s\n" "$*"
+EOF
+  cat > "${OPS_TOOLKIT_DIR}/linux-admin-toolkit.sh" <<'\''EOF'\''
+#!/usr/bin/env bash
+printf "linux-admin:%s\n" "$*"
+EOF
+  install_ops_toolkit_dispatcher
+  install_ops_toolkit_script_commands
+  list_output="$("${OPS_TOOLKIT_BIN_DIR}/ops" list)"
+  [[ "${list_output}" == *"sshm"* ]]
+  [[ "${list_output}" == *"linux-admin-toolkit"* ]]
+  [[ "$("${OPS_TOOLKIT_BIN_DIR}/sshm" --list)" == "sshm:--list" ]]
+  [[ "$("${OPS_TOOLKIT_BIN_DIR}/ops" linux-admin-toolkit --help)" == "linux-admin:--help" ]]
+'
+rm -rf "${ops_tmp}"
 
 echo "==> package helpers"
 package_output="$(

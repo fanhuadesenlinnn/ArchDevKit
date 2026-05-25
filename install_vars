@@ -66,6 +66,16 @@ GO_VERSION="1.23"
 ENABLE_COREPACK=1
 
 # =========================
+# Ops Toolkit：可更新的运维脚本仓库和稳定命令入口
+# =========================
+ENABLE_OPS_TOOLKIT=1 # 1=随 dev/workstation 安装，0=dev/workstation 跳过；直接执行 ops-toolkit 命令不受此项限制
+OPS_TOOLKIT_REPO="https://github.com/fanhuadesenlinnn/ops-toolkit.git"
+OPS_TOOLKIT_BRANCH=""
+OPS_TOOLKIT_DIR="${HOME}/.local/share/ops-toolkit"
+OPS_TOOLKIT_BIN_DIR="${HOME}/.local/bin"
+OPS_TOOLKIT_COMMAND="ops"
+
+# =========================
 # Neovim
 # =========================
 NVIM_REPO="https://github.com/fanhuadesenlinnn/nvim.git"
