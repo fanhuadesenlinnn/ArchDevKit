@@ -7,7 +7,7 @@ REPO_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 cd "${REPO_DIR}"
 
 echo "==> bash syntax"
-bash -n install.sh lib/*.sh modules/*.sh modules/desktop/*.sh
+bash -n install.sh lib/*.sh modules/*.sh modules/desktop/*.sh modules/proxy/*.sh
 
 echo "==> plan json"
 bash install.sh plan workstation --json | ruby -rjson -e '
@@ -341,6 +341,34 @@ recovery_output="$(
 [[ "${recovery_output}" == *"bash install.sh install workstation --yes"* ]] || { echo "missing target retry"; exit 1; }
 [[ "${recovery_output}" == *"bash install.sh install runtime --force --yes"* ]] || { echo "missing module retry"; exit 1; }
 [[ "${recovery_output}" == *"bash install.sh reset-state runtime"* ]] || { echo "missing reset hint"; exit 1; }
+
+echo "==> proxy module split"
+proxy_split_output="$(
+  DRY_RUN=1 bash -c '
+    set -Eeuo pipefail
+    SCRIPT_DIR="$PWD"
+    source install_vars
+    DRY_RUN=1
+    source lib/common.sh
+    source lib/files.sh
+    source lib/packages.sh
+    source lib/systemd.sh
+    source modules/proxy.sh
+    tmp_home="$(mktemp -d)"
+    trap "rm -rf \"${tmp_home}\"" EXIT
+    HOME="${tmp_home}"
+    PROXY_CORE=mihomo
+    ENABLE_METACUBEXD=1
+    render_default_mihomo_config /etc/mihomo/config.yaml
+    verify_proxy_env
+    PROXY_CORE=sing-box
+    configure_sing_box
+  '
+)"
+[[ "${proxy_split_output}" == *"sudo render "*"files/mihomo/config.yaml.tpl -> /etc/mihomo/config.yaml"* ]] || { echo "missing mihomo render through split"; exit 1; }
+[[ "${proxy_split_output}" == *"Mihomo 规则源：原始 URL"* ]] || { echo "missing mihomo verify through split"; exit 1; }
+[[ "${proxy_split_output}" == *"render "*"files/sing-box/config.json.tpl"* ]] || { echo "missing sing-box render through split"; exit 1; }
+[[ "${proxy_split_output}" == *"write "*"archdevkit-sing-box.service"* ]] || { echo "missing sing-box service through split"; exit 1; }
 
 echo "==> mihomo yaml render"
 tmp_mihomo="$(mktemp)"

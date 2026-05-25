@@ -36,7 +36,16 @@ ArchDevKit 的安装器按“入口薄、模块深、配置先行”的方向演
 
    每个安装模块维护自己的安装、验证、依赖判断和配置渲染逻辑。例如 Proxy 模块负责 Mihomo/sing-box，DNS 模块负责 systemd-resolved。
 
-9. `modules/desktop/*.sh`
+9. `modules/proxy/*.sh`
+
+   Proxy 模块的子模块。`modules/proxy.sh` 负责代理安装总流程；子模块承接配置来源、Mihomo、sing-box 和公共服务/验证逻辑。
+
+   - `config_source.sh`：本地配置、远程 URL、root/user 配置安装和默认来源判断。
+   - `mihomo.sh`：Mihomo 模板渲染、systemd unit 适配、服务配置测试和 MetaCubeXD 部署。
+   - `sing_box.sh`：sing-box 模板渲染、用户级 systemd 服务写入。
+   - `common.sh`：proxy 套餐依赖、shell 代理模板、服务启用和验证输出。
+
+10. `modules/desktop/*.sh`
 
    Hyprland 桌面模块的子模块。`modules/desktop_hyprland.sh` 只负责桌面安装总流程；子模块承接软件包、服务、输入法、虚拟机适配、hyprdots 配置、运行时辅助脚本和安装后验证。
 
@@ -48,27 +57,27 @@ ArchDevKit 的安装器按“入口薄、模块深、配置先行”的方向演
    - `helpers.sh`：终端、Neovide 和 VMware Wayland 会话 wrapper。
    - `verify.sh`：Hyprland 桌面关键命令验证。
 
-10. `lib/files.sh`
+11. `lib/files.sh`
 
    集中维护文件写入、root 文件写入、临时文件安装和模板渲染。模块只表达目标路径、权限和模板变量，避免重复 `mktemp` / `backup` / `install -m` 细节。
 
-11. `lib/systemd.sh`
+12. `lib/systemd.sh`
 
    集中维护 systemd 操作，包括系统 unit 探测、daemon-reload、系统服务启用、开机启用和用户服务启用。模块只表达“要启用哪个服务”，不复制 daemon-reload / enable / active 检查流程。
 
-12. `lib/packages.sh`
+13. `lib/packages.sh`
 
    集中维护 pacman、archlinuxcn 兜底、AUR helper、makepkg 回退和命令依赖安装。模块只表达要安装的软件包，不直接关心包来源选择和 AUR 引导路径。
 
-13. `lib/doctor.sh`
+14. `lib/doctor.sh`
 
    集中维护环境诊断。当前偏实用检查：基础命令、配置提示、状态目录、pacman lock、GitHub/raw/AUR 解析、display-manager 和 Mihomo 基础状态。新增检查项时优先放在这里，避免散落到入口流程。
 
-14. `lib/recovery.sh`
+15. `lib/recovery.sh`
 
    安装失败恢复提示。安装流程会记录当前阶段和当前模块；失败时输出目标、模块、日志、重试命令和状态清理命令。
 
-15. `lib/json.sh`
+16. `lib/json.sh`
 
    统一 JSON 字段和转义逻辑。`plan/status/doctor --json` 都应保持 `schemaVersion`、`command`、`generatedAt` 和 `warnings`。
 
@@ -97,6 +106,7 @@ ArchDevKit 的安装器按“入口薄、模块深、配置先行”的方向演
 - file helper 的 dry-run 输出
 - systemd helper 的 dry-run 输出
 - package helper 的基础列表处理
+- Proxy 子模块 source 后的 Mihomo/sing-box dry-run 路径
 - Hyprland 桌面子模块的 dry-run 路径，包括 packages、services、input method、VM、hyprdots、helpers 和 verify
 - 失败恢复提示中的目标、模块、日志和重试命令
 - 用户配置文件覆盖
