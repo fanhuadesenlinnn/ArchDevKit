@@ -213,7 +213,7 @@ menu_target_overview() {
   printf "  %-12s %s\n" "desktop" "桌面：安装 Hyprland、SDDM、Fcitx5/Rime、浏览器、终端和 hyprdots 配置"
   echo
   echo "[组合目标]"
-  printf "  %-12s %s\n" "dev" "开发环境套餐：base + archlinuxcn + dns + git + runtime + nvim + fonts + shell + proxy"
+  printf "  %-12s %s\n" "dev" "开发环境套餐：base + archlinuxcn + dns + git + runtime + nvim + docker + fonts + shell + proxy"
   printf "  %-12s %s\n" "workstation" "完整工作站套餐：dev + desktop"
   printf "  %-12s %s\n" "custom" "自定义入口：先选一个起点，再按后续问题微调关键开关"
   echo

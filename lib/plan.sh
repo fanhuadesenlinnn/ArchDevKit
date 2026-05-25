@@ -70,6 +70,7 @@ modules_for_dev() {
   modules="$(append_plan_module "${modules}" "git")"
   modules="$(append_plan_module "${modules}" "runtime")"
   modules="$(append_plan_module "${modules}" "nvim")"
+  modules="$(append_plan_module "${modules}" "docker")"
   modules="$(append_plan_module "${modules}" "fonts")"
   modules="$(append_plan_module "${modules}" "shell")"
 

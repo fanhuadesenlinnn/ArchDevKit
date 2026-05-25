@@ -506,7 +506,7 @@ show_menu() {
   TARGET="$(
     ask_menu_default "安装目标" "${TARGET}" \
       "base|基础环境：基础命令行工具、同步/排障工具和 paru/yay" \
-      "dev|开发环境：base + archlinuxcn + dns + git + runtime + nvim + fonts + shell + proxy" \
+      "dev|开发环境：base + archlinuxcn + dns + git + runtime + nvim + docker + fonts + shell + proxy" \
       "workstation|完整工作站：dev + Hyprland 桌面" \
       "custom|自定义入口：先选起点，再按后续问题微调" \
       "dns|系统 DNS：systemd-resolved、NetworkManager DNS 后端和 fallback DNS" \

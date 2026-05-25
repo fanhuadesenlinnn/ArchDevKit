@@ -35,7 +35,7 @@ ArchDevKit 是一个面向 Arch Linux 最小化安装后的工作站初始化工
 - 脚本会优先复用或安装 `paru` 作为内部 AUR helper，并同时尝试安装 `yay` 供后续手动使用；若 `paru` 不可用，才会临时使用 `yay` 或回退到 `makepkg`。
 - `paru`/`yay` 不可用时，才会回退到 `git clone + makepkg`。
 
-`base`、`dev`、`workstation` 仍然是显式套餐：选择它们时会按套餐目标安装对应模块。`dev` 默认等于 `base + archlinuxcn + dns + git + runtime + nvim + fonts + shell + proxy`；`workstation` 默认等于 `dev + desktop`。Docker 仍可通过 `bash install.sh docker` 单独安装。
+`base`、`dev`、`workstation` 仍然是显式套餐：选择它们时会按套餐目标安装对应模块。`dev` 默认等于 `base + archlinuxcn + dns + git + runtime + nvim + docker + fonts + shell + proxy`；`workstation` 默认等于 `dev + desktop`。Docker 仍可通过 `bash install.sh docker` 单独安装。
 
 ## 快速开始
 

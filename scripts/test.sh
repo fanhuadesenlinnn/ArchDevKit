@@ -34,6 +34,12 @@ bash install.sh plan base --json | ruby -rjson -e '
   raise "base key mismatch" unless mod.fetch("key") == "base"
   raise "base description missing" if mod.fetch("description").empty?
 '
+bash install.sh plan dev --json | ruby -rjson -e '
+  data = JSON.parse(STDIN.read)
+  keys = data.fetch("modules").map { |m| m.fetch("key") }
+  raise "dev missing docker" unless keys.include?("docker")
+  raise "docker order mismatch" unless keys.index("nvim") < keys.index("docker") && keys.index("docker") < keys.index("fonts")
+'
 
 echo "==> user config file"
 tmp_home="$(mktemp -d)"
