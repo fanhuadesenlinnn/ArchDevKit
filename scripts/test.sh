@@ -123,6 +123,62 @@ file_output="$(
 [[ "${file_output}" == *"render files/sing-box/config.json.tpl -> /tmp/sing-box.json"* ]] || { echo "missing user render"; exit 1; }
 [[ "${file_output}" == *"sudo render files/sing-box/config.json.tpl -> /etc/sing-box/config.json"* ]] || { echo "missing root render"; exit 1; }
 
+echo "==> managed block helpers"
+managed_dry_output="$(
+  DRY_RUN=1 bash -c '
+    set -Eeuo pipefail
+    source lib/common.sh
+    source lib/files.sh
+    printf "value\n" | write_managed_block_from_stdin /tmp/archdevkit-rc proxy-env
+    remove_managed_block /tmp/archdevkit-rc proxy-env
+  '
+)"
+[[ "${managed_dry_output}" == *"write managed block proxy-env -> /tmp/archdevkit-rc"* ]] || { echo "missing managed block dry-run write"; exit 1; }
+[[ "${managed_dry_output}" == *"remove managed block proxy-env from /tmp/archdevkit-rc"* ]] || { echo "missing managed block dry-run remove"; exit 1; }
+
+managed_dir="$(mktemp -d)"
+MANAGED_DIR="${managed_dir}" bash -c '
+  set -Eeuo pipefail
+  source lib/common.sh
+  source lib/files.sh
+  file="${MANAGED_DIR}/rc"
+  printf "before\n" > "${file}"
+  printf "one\n" | write_managed_block_from_stdin "${file}" sample
+  printf "two\n" | write_managed_block_from_stdin "${file}" sample
+  [[ "$(grep -c "^# >>> ArchDevKit: sample >>>$" "${file}")" -eq 1 ]]
+  [[ "$(grep -c "^two$" "${file}")" -eq 1 ]]
+  [[ "$(grep -c "^one$" "${file}")" -eq 0 ]]
+  remove_managed_block "${file}" sample
+  ! grep -q "ArchDevKit: sample" "${file}"
+  grep -q "^before$" "${file}"
+'
+rm -rf "${managed_dir}"
+
+echo "==> tmux config"
+tmux_output="$(
+  DRY_RUN=1 bash -c '
+    set -Eeuo pipefail
+    SCRIPT_DIR="$PWD"
+    source lib/common.sh
+    source lib/files.sh
+    source modules/base.sh
+    install_tmux_config
+  '
+)"
+[[ "${tmux_output}" == *"render ${PWD}/files/tmux/tmux.conf -> ${HOME}/.tmux.conf"* ]] || { echo "missing tmux config render"; exit 1; }
+
+echo "==> base tool status"
+base_tool_output="$(
+  bash -c '
+    set -Eeuo pipefail
+    source lib/common.sh
+    source modules/base.sh
+    show_base_tool_status_table
+  '
+)"
+[[ "${base_tool_output}" == *"[基础工具状态]"* ]] || { echo "missing base tool table"; exit 1; }
+[[ "${base_tool_output}" == *"git"* ]] || { echo "missing git in base tool table"; exit 1; }
+
 echo "==> package helpers"
 package_output="$(
   bash -c '
@@ -323,6 +379,7 @@ bash install.sh doctor --json | ruby -rjson -e '
   %w[pacman-lock github-raw aur display-manager].each do |name|
     raise "missing doctor check #{name}" unless names.include?(name)
   end
+  raise "missing tool status check" unless names.include?("tool:tmux")
 '
 
 echo "==> recovery hints"

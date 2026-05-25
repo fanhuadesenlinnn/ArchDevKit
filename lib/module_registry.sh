@@ -106,7 +106,7 @@ module_impacts() {
 }
 
 module_config_fingerprint() {
-  local module
+  local module tmux_config
   module="$(module_key "$1")"
   {
     printf 'module=%s\n' "${module}"
@@ -114,6 +114,12 @@ module_config_fingerprint() {
       base)
         printf 'packages=%s\n' "$(base_packages)"
         printf 'aur_helpers=paru+yay\n'
+        tmux_config="${SCRIPT_DIR}/files/tmux/tmux.conf"
+        if [[ -f "${tmux_config}" ]]; then
+          printf 'tmux_config=%s\n' "$(sha256sum "${tmux_config}" | awk '{print $1}')"
+        else
+          printf 'tmux_config=missing\n'
+        fi
         ;;
       dns)
         printf 'dns=%s\n' "${DNS_SERVERS[*]}"
@@ -160,7 +166,10 @@ module_quick_verify() {
   local module
   module="$(module_key "$1")"
   case "${module}" in
-    base) need_cmd git && need_cmd curl && need_cmd jq && need_cmd rg ;;
+    base)
+      need_cmd git && need_cmd curl && need_cmd jq && need_cmd rg && \
+        need_cmd tmux && [[ -f "${HOME}/.tmux.conf" ]]
+      ;;
     dns) [[ -f /etc/systemd/resolved.conf.d/90-archdevkit-dns.conf ]] ;;
     archlinuxcn) [[ -r /etc/pacman.conf ]] && grep -q '^\[archlinuxcn\]' /etc/pacman.conf ;;
     git) need_cmd git && need_cmd gh ;;

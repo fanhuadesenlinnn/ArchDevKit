@@ -124,6 +124,19 @@ doctor_check_mihomo_config() {
   fi
 }
 
+doctor_check_base_tools_json() {
+  local name command_name command_path
+
+  while IFS=: read -r name command_name; do
+    [[ -n "${name}" ]] || continue
+    if command_path="$(command -v "${command_name}" 2>/dev/null)"; then
+      doctor_check "tool:${name}" "ok" "${command_name} -> ${command_path}"
+    else
+      doctor_check "tool:${name}" "warn" "缺少命令：${command_name}"
+    fi
+  done < <(base_tool_commands)
+}
+
 show_doctor() {
   DOCTOR_JSON_ITEMS=()
   if [[ "${OUTPUT_JSON:-0}" -ne 1 ]]; then
@@ -162,6 +175,9 @@ show_doctor() {
   fi
   doctor_check_display_manager
   doctor_check_mihomo_config
+  if [[ "${OUTPUT_JSON:-0}" -eq 1 ]]; then
+    doctor_check_base_tools_json
+  fi
 
   if [[ "${OUTPUT_JSON:-0}" -eq 1 ]]; then
     local item first=1 name status detail
@@ -181,6 +197,8 @@ show_doctor() {
     printf ']}\n'
   else
     show_config_warnings_text
+    echo
+    show_base_tool_status_table
     echo "----------------------------------------------------------"
   fi
 }

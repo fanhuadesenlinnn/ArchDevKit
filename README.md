@@ -88,7 +88,7 @@ bash install.sh install proxy
 
 | 模块 | 用途 |
 | --- | --- |
-| `base` | 基础工具、同步工具、排障工具、现代 CLI 工具、paru/yay |
+| `base` | 基础工具、同步工具、排障工具、现代 CLI 工具、tmux 配置、paru/yay |
 | `dns` | systemd-resolved 系统 DNS |
 | `archlinuxcn` | archlinuxcn 软件源 |
 | `git` | Git、GitHub CLI、OpenSSH 和基础 Git 配置 |
