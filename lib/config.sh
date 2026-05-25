@@ -5,6 +5,10 @@ CONFIG_FILE_LOADED=0
 CONFIG_LOAD_WARNINGS=()
 CONFIG_WARNINGS=()
 
+config_file_path() {
+  printf "%s" "${ARCHDEVKIT_CONFIG_FILE:-${HOME}/.config/archdevkit/config.env}"
+}
+
 config_scalar_keys() {
   cat <<'EOF'
 ASSUME_YES DRY_RUN ARCHDEVKIT_DEFAULT_PROFILE ARCHDEVKIT_USE_STATE ARCHDEVKIT_STATE_DIR ARCHDEVKIT_LOAD_CONFIG_FILE ARCHDEVKIT_CONFIG_FILE ARCHDEVKIT_JSON_SCHEMA_VERSION
@@ -49,6 +53,115 @@ config_scalar_allowed() {
 
 config_list_allowed() {
   config_list_keys | word_list_has "$1"
+}
+
+config_escape_value() {
+  local value="$1"
+  value="${value//\\/\\\\}"
+  value="${value//\"/\\\"}"
+  printf "%s" "${value}"
+}
+
+config_join_list() {
+  local IFS=,
+  printf "%s" "$*"
+}
+
+config_value_for_key() {
+  local key="$1"
+  case "${key}" in
+    DNS_SERVERS) config_join_list "${DNS_SERVERS[@]}" ;;
+    DNS_FALLBACK_SERVERS) config_join_list "${DNS_FALLBACK_SERVERS[@]}" ;;
+    DNS_FOREIGN_FALLBACK_SERVERS) config_join_list "${DNS_FOREIGN_FALLBACK_SERVERS[@]}" ;;
+    DOCKER_MIRRORS) config_join_list "${DOCKER_MIRRORS[@]}" ;;
+    HYPRDOTS_CONFIG_MODULES) config_join_list "${HYPRDOTS_CONFIG_MODULES[@]}" ;;
+    *)
+      printf "%s" "${!key-}"
+      ;;
+  esac
+}
+
+config_write_key() {
+  local key="$1" value
+  value="$(config_value_for_key "${key}")"
+  printf '%s="%s"\n' "${key}" "$(config_escape_value "${value}")"
+}
+
+config_write_section() {
+  local title="$1" key
+  shift
+  printf '\n# %s\n' "${title}"
+  for key in "$@"; do
+    config_write_key "${key}"
+  done
+}
+
+config_write_effective() {
+  cat <<'EOF'
+# ArchDevKit 用户配置
+# 由 bash install.sh config init 生成。
+# 修改这里会覆盖 install_vars 中的默认值；未写出的键继续使用项目默认值。
+EOF
+
+  config_write_section "全局行为" \
+    ARCHDEVKIT_DEFAULT_PROFILE ARCHDEVKIT_USE_STATE ARCHDEVKIT_STATE_DIR
+
+  config_write_section "中国大陆网络" \
+    ENABLE_CHINA_MIRROR ENABLE_GITHUB_PROXY GITHUB_PROXY NPM_REGISTRY PIP_INDEX_URL PIP_TRUSTED_HOST \
+    NODE_MIRROR_URL GO_DOWNLOAD_MIRROR PYTHON_BUILD_MIRROR_URL PYENV_REPO_URL ENABLE_MISE_GITHUB_URL_REPLACEMENT
+
+  config_write_section "DNS" \
+    ENABLE_DNS DNS_SERVERS DNS_FALLBACK_SERVERS DNS_FOREIGN_FALLBACK_SERVERS DNS_DNSSEC DNS_OVER_TLS \
+    DNS_CACHE DNS_LLMNR DNS_MULTICAST_DNS DNS_CONFIGURE_NETWORKMANAGER DNS_LINK_RESOLV_CONF DNS_RESTART_NETWORKMANAGER
+
+  config_write_section "软件源和运行时" \
+    INSTALL_ARCHLINUXCN ARCHLINUXCN_SERVER INSTALL_ARCHLINUXCN_MIRRORLIST \
+    RUNTIME_MANAGER NODE_VERSION NPM_VERSION PYTHON_VERSION GO_VERSION ENABLE_COREPACK
+
+  config_write_section "Neovim / Shell / 字体 / Docker" \
+    NVIM_REPO NVIM_BRANCH NVIM_CONFIG_DIR SYNC_NVIM_PLUGINS \
+    INSTALL_OH_MY_ZSH INSTALL_POWERLEVEL10K INSTALL_P10K_CONFIG SET_ZSH_AS_DEFAULT ZSH_THEME_NAME ZSH_PLUGINS \
+    INSTALL_CN_FONTS INSTALL_NERD_FONTS INSTALL_MONACO_FONT MONACO_AS_SYSTEM_FONT \
+    ENABLE_DOCKER_SERVICE ADD_USER_TO_DOCKER_GROUP CONFIGURE_DOCKER_MIRRORS DOCKER_MIRRORS
+
+  config_write_section "Hyprland 桌面" \
+    ENABLE_SDDM ENABLE_BLUETOOTH ENABLE_FCITX5 INPUT_METHOD_ENGINE RIME_SCHEMA INSTALL_RIME_CONFIG \
+    RIME_CONFIG_REPO RIME_CONFIG_BRANCH RIME_CONFIG_DIR GPU_TYPE VMWARE_FORCE_SOFTWARE_RENDERER \
+    VM_HYPRLAND_MONITOR_MODE VM_HYPRLAND_DYNAMIC_RESIZE VM_HYPRLAND_LOW_LATENCY HYPRLAND_CONFIG_MODE \
+    INSTALL_HYPRDOTS_OBSIDIAN HYPRDOTS_CONFIG_MODULES TERMINAL_APP APP_LAUNCHER FILE_MANAGER BROWSER_PACKAGE BROWSER_APP
+
+  config_write_section "Proxy" \
+    ENABLE_PROXY PROXY_CORE PROXY_AUTO_ENABLE_SERVICE MIHOMO_PACKAGE MIHOMO_SERVICE_NAME MIHOMO_CONFIG_DIR \
+    MIHOMO_CONFIG_FILE MIHOMO_CONFIG_SOURCE MIHOMO_MIXED_PORT MIHOMO_ALLOW_LAN MIHOMO_BIND_ADDRESS \
+    MIHOMO_CONTROLLER_HOST MIHOMO_CONTROLLER_PORT MIHOMO_DNS_LISTEN MIHOMO_SECRET MIHOMO_STATE_DIR \
+    MIHOMO_EXTERNAL_UI_DIR ENABLE_METACUBEXD METACUBEXD_PACKAGE METACUBEXD_WEB_ROOT \
+    SING_BOX_PACKAGE SING_BOX_CONFIG_DIR SING_BOX_CONFIG_FILE SING_BOX_CONFIG_SOURCE SING_BOX_MIXED_PORT
+}
+
+config_init_file() {
+  local config_file tmp_file
+  config_file="$(config_file_path)"
+
+  if [[ -e "${config_file}" && "${FORCE_INSTALL:-0}" -ne 1 ]]; then
+    die "配置文件已存在：${config_file}；如需覆盖请加 --force"
+  fi
+
+  log_info "生成用户配置文件：${config_file}"
+  if [[ "${DRY_RUN:-0}" -eq 1 ]]; then
+    echo "+ write ${config_file}"
+    return 0
+  fi
+
+  mkdir -p "$(dirname "${config_file}")"
+  tmp_file="$(mktemp)"
+  config_write_effective > "${tmp_file}"
+  install -m 0600 "${tmp_file}" "${config_file}"
+  rm -f "${tmp_file}"
+}
+
+config_validate_command() {
+  log_info "配置校验通过"
+  show_config_warnings_text
 }
 
 trim_config_value() {
@@ -131,7 +244,7 @@ load_user_config_file() {
     1|true|yes|y|on) ;;
     *) return 0 ;;
   esac
-  config_file="${ARCHDEVKIT_CONFIG_FILE:-${HOME}/.config/archdevkit/config.env}"
+  config_file="$(config_file_path)"
   [[ -f "${config_file}" ]] || return 0
 
   while IFS= read -r line || [[ -n "${line}" ]]; do

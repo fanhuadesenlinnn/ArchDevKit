@@ -53,6 +53,19 @@ HOME="${tmp_home}" bash install.sh plan --json | ruby -rjson -e '
 '
 rm -rf "${tmp_home}"
 
+echo "==> config commands"
+tmp_home="$(mktemp -d)"
+config_file="${tmp_home}/.config/archdevkit/config.env"
+HOME="${tmp_home}" bash install.sh config init --config-file "${config_file}"
+[[ -f "${config_file}" ]] || { echo "missing generated config"; exit 1; }
+grep -q '^ARCHDEVKIT_DEFAULT_PROFILE=' "${config_file}" || { echo "missing default profile config"; exit 1; }
+grep -q '^DNS_SERVERS=' "${config_file}" || { echo "missing dns list config"; exit 1; }
+config_validate_output="$(HOME="${tmp_home}" bash install.sh config validate --config-file "${config_file}")"
+[[ "${config_validate_output}" == *"配置校验通过"* ]] || { echo "missing config validate"; exit 1; }
+config_show_output="$(HOME="${tmp_home}" bash install.sh config show --config-file "${config_file}")"
+[[ "${config_show_output}" == *"[当前安装配置]"* ]] || { echo "missing config show"; exit 1; }
+rm -rf "${tmp_home}"
+
 echo "==> status json"
 bash install.sh status --json | ruby -rjson -e '
   data = JSON.parse(STDIN.read)

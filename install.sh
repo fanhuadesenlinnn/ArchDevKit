@@ -34,6 +34,7 @@ source "${SCRIPT_DIR}/lib/recovery.sh"
 ACTION="menu"
 TARGET="${ARCHDEVKIT_DEFAULT_PROFILE:-workstation}"
 TARGET_SET=0
+CONFIG_SUBCOMMAND="show"
 FORCE_INSTALL=0
 NO_STATE=0
 RESUME_INSTALL=0
@@ -52,7 +53,7 @@ ArchDevKit - Arch Linux 工作站初始化工具
   bash install.sh install [base|dns|archlinuxcn|git|runtime|nvim|docker|fonts|shell|desktop|proxy|dev|workstation]
   bash install.sh status [module]
   bash install.sh doctor
-  bash install.sh config
+  bash install.sh config [show|init|validate]
   bash install.sh reset-state [module|all]
 
 兼容用法：
@@ -62,7 +63,7 @@ ArchDevKit - Arch Linux 工作站初始化工具
 常用参数：
   -y, --yes                 自动确认
   --dry-run                 只显示计划，不执行
-  --force                   忽略模块状态，强制重跑目标模块
+  --force                   忽略模块状态，强制重跑目标模块；config init 时覆盖已有配置
   --resume                  从状态记录继续，已成功模块自动跳过
   --no-state                不读取或写入模块状态
   --json                    plan/status/doctor 输出 JSON
@@ -117,6 +118,14 @@ parse_args() {
     case "${token}" in
       menu|config|help|plan|install|status|doctor|reset-state)
         ACTION="${token}"; shift ;;
+      show|init|validate)
+        if [[ "${ACTION}" == "config" ]]; then
+          CONFIG_SUBCOMMAND="${token}"
+          shift
+        else
+          die "${token} 只能用于 config 命令"
+        fi
+        ;;
       all)
         if [[ "${ACTION}" == "status" || "${ACTION}" == "reset-state" ]]; then
           TARGET="all"
@@ -239,7 +248,7 @@ show_config() {
   echo "默认目标:             ${ARCHDEVKIT_DEFAULT_PROFILE:-workstation}"
   echo "dry-run:              $(bool_text "${DRY_RUN}")"
   echo "自动确认:             $(bool_text "${ASSUME_YES}")"
-  echo "用户配置文件:         ${ARCHDEVKIT_CONFIG_FILE:-${HOME}/.config/archdevkit/config.env}"
+  echo "用户配置文件:         $(config_file_path)"
   echo "已加载用户配置:       $(bool_text "${CONFIG_FILE_LOADED}")"
   echo "模块状态目录:         $(state_root)"
   echo "JSON schema:          ${ARCHDEVKIT_JSON_SCHEMA_VERSION:-1}"
@@ -594,7 +603,14 @@ main() {
 
   case "${ACTION}" in
     help) show_help ;;
-    config) show_config ;;
+    config)
+      case "${CONFIG_SUBCOMMAND}" in
+        show) show_config ;;
+        init) config_init_file ;;
+        validate) config_validate_command ;;
+        *) die "未知 config 子命令：${CONFIG_SUBCOMMAND}" ;;
+      esac
+      ;;
     plan)
       show_plan "${TARGET}" "$(modules_for_target "${TARGET}")"
       ;;
