@@ -39,6 +39,60 @@ module_state_valid() {
   module_quick_verify "${module}"
 }
 
+state_collect_module() {
+  local module="$1" file status hash expected
+  module="$(module_key "${module}")"
+  file="$(module_state_file "${module}")"
+  status="missing"
+  hash="-"
+  expected="$(module_config_fingerprint "${module}")"
+
+  STATE_MODULE="${module}"
+  STATE_DISPLAY="$(module_display_key "${module}")"
+  STATE_FILE="${file}"
+  STATE_STATUS="${status}"
+  STATE_CHECK="missing"
+  STATE_REASON="未找到状态文件"
+  STATE_SUGGESTION="需要安装时执行：bash install.sh install $(module_display_key "${module}") --yes"
+  STATE_INSTALLED_AT="-"
+  STATE_SCRIPT_COMMIT="-"
+  STATE_CONFIG_HASH="${hash}"
+  STATE_EXPECTED_HASH="${expected}"
+
+  [[ -f "${file}" ]] || return 0
+
+  status="$(read_state_value "${file}" "status" || echo unknown)"
+  hash="$(read_state_value "${file}" "config_hash" || echo unknown)"
+  STATE_STATUS="${status}"
+  STATE_CONFIG_HASH="${hash}"
+  STATE_INSTALLED_AT="$(read_state_value "${file}" "installed_at" || echo unknown)"
+  STATE_SCRIPT_COMMIT="$(read_state_value "${file}" "script_commit" || echo unknown)"
+
+  if [[ "${status}" != "success" ]]; then
+    STATE_CHECK="check-failed"
+    STATE_REASON="状态文件记录的状态不是 success"
+    STATE_SUGGESTION="建议执行：bash install.sh install $(module_display_key "${module}") --force --yes"
+    return 0
+  fi
+
+  if [[ "${hash}" != "${expected}" ]]; then
+    STATE_CHECK="changed"
+    STATE_REASON="当前配置指纹和上次成功安装时不同"
+    STATE_SUGGESTION="确认变更后执行：bash install.sh install $(module_display_key "${module}") --force --yes"
+    return 0
+  fi
+
+  if module_quick_verify "${module}"; then
+    STATE_CHECK="ok"
+    STATE_REASON="状态文件、配置指纹和轻量校验都通过"
+    STATE_SUGGESTION="无需处理"
+  else
+    STATE_CHECK="check-failed"
+    STATE_REASON="配置指纹未变化，但轻量校验未通过"
+    STATE_SUGGESTION="先执行：bash install.sh doctor；需要重装时执行：bash install.sh install $(module_display_key "${module}") --force --yes"
+  fi
+}
+
 mark_module_installed() {
   local module file commit
   module="$(module_key "$1")"
@@ -90,67 +144,58 @@ reset_module_state() {
 }
 
 state_status_text() {
-  local module file status hash expected ok display
+  local module
   echo "----------------------------------------------------------"
   echo "[ArchDevKit 模块状态]"
   echo "状态目录: $(state_root)"
   echo
   printf "%-18s %-10s %-10s %s\n" "模块" "状态" "校验" "说明"
   for module in "$@"; do
-    module="$(module_key "${module}")"
-    display="$(module_display_key "${module}")"
-    file="$(module_state_file "${module}")"
-    status="missing"
-    hash="-"
-    [[ -f "${file}" ]] && status="$(read_state_value "${file}" "status" || echo unknown)"
-    expected="$(module_config_fingerprint "${module}")"
-    if [[ -f "${file}" ]]; then
-      hash="$(read_state_value "${file}" "config_hash" || echo unknown)"
-    fi
-    if [[ -f "${file}" && "${hash}" == "${expected}" ]] && module_quick_verify "${module}"; then
-      ok="ok"
-    elif [[ -f "${file}" && "${hash}" != "${expected}" ]]; then
-      ok="changed"
-    else
-      ok="check-failed"
-    fi
-    [[ "${status}" == "missing" ]] && ok="-"
-    printf "%-18s %-10s %-10s %s\n" "${display}" "${status}" "${ok}" "$(module_desc "${module}")"
+    state_collect_module "${module}"
+    printf "%-18s %-10s %-10s %s\n" "${STATE_DISPLAY}" "${STATE_STATUS}" "${STATE_CHECK}" "$(module_desc "${STATE_MODULE}")"
   done
+
+  if [[ "${STATUS_VERBOSE:-0}" -eq 1 ]]; then
+    echo
+    echo "[状态详情]"
+    for module in "$@"; do
+      state_collect_module "${module}"
+      echo "- ${STATE_DISPLAY}: ${STATE_REASON}"
+      echo "  状态文件: ${STATE_FILE}"
+      echo "  安装时间: ${STATE_INSTALLED_AT}"
+      echo "  脚本提交: ${STATE_SCRIPT_COMMIT}"
+      echo "  记录指纹: ${STATE_CONFIG_HASH}"
+      echo "  当前指纹: ${STATE_EXPECTED_HASH}"
+      echo "  建议动作: ${STATE_SUGGESTION}"
+    done
+  fi
   echo "----------------------------------------------------------"
 }
 
 state_status_json() {
-  local module file status hash expected ok first=1
+  local module first=1
   printf '{'
   json_metadata_fields "status"; printf ','
   printf '"stateDir":'; json_string "$(state_root)"; printf ','
   printf '"warnings":'; json_warnings_array; printf ','
   printf '"modules":['
   for module in "$@"; do
-    module="$(module_key "${module}")"
-    file="$(module_state_file "${module}")"
-    status="missing"
-    hash="-"
-    [[ -f "${file}" ]] && status="$(read_state_value "${file}" "status" || echo unknown)"
-    expected="$(module_config_fingerprint "${module}")"
-    if [[ -f "${file}" ]]; then
-      hash="$(read_state_value "${file}" "config_hash" || echo unknown)"
-    fi
-    if [[ -f "${file}" && "${hash}" == "${expected}" ]] && module_quick_verify "${module}"; then
-      ok="ok"
-    elif [[ -f "${file}" && "${hash}" != "${expected}" ]]; then
-      ok="changed"
-    else
-      ok="check-failed"
-    fi
-    [[ "${status}" == "missing" ]] && ok="missing"
+    state_collect_module "${module}"
     [[ "${first}" -eq 1 ]] || printf ','
     first=0
-    printf '{"key":'; json_string "${module}"
-    printf ',"name":'; json_string "$(module_display_key "${module}")"
-    printf ',"status":'; json_string "${status}"
-    printf ',"check":'; json_string "${ok}"
+    printf '{"key":'; json_string "${STATE_MODULE}"
+    printf ',"name":'; json_string "${STATE_DISPLAY}"
+    printf ',"status":'; json_string "${STATE_STATUS}"
+    printf ',"check":'; json_string "${STATE_CHECK}"
+    if [[ "${STATUS_VERBOSE:-0}" -eq 1 ]]; then
+      printf ',"reason":'; json_string "${STATE_REASON}"
+      printf ',"suggestion":'; json_string "${STATE_SUGGESTION}"
+      printf ',"stateFile":'; json_string "${STATE_FILE}"
+      printf ',"installedAt":'; json_string "${STATE_INSTALLED_AT}"
+      printf ',"scriptCommit":'; json_string "${STATE_SCRIPT_COMMIT}"
+      printf ',"configHash":'; json_string "${STATE_CONFIG_HASH}"
+      printf ',"expectedConfigHash":'; json_string "${STATE_EXPECTED_HASH}"
+    fi
     printf '}'
   done
   printf ']}\n'

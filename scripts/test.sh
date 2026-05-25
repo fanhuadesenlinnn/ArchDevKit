@@ -73,6 +73,15 @@ bash install.sh status --json | ruby -rjson -e '
   raise "command mismatch" unless data.fetch("command") == "status"
   raise "missing modules" unless data.fetch("modules").is_a?(Array)
 '
+bash install.sh status base --verbose --json | ruby -rjson -e '
+  data = JSON.parse(STDIN.read)
+  mod = data.fetch("modules").fetch(0)
+  raise "missing verbose reason" unless mod.key?("reason")
+  raise "missing verbose suggestion" unless mod.key?("suggestion")
+'
+status_verbose_output="$(bash install.sh status base --verbose)"
+[[ "${status_verbose_output}" == *"[状态详情]"* ]] || { echo "missing status details"; exit 1; }
+[[ "${status_verbose_output}" == *"建议动作"* ]] || { echo "missing status suggestion"; exit 1; }
 
 echo "==> systemd helpers"
 systemd_output="$(
@@ -304,6 +313,10 @@ bash install.sh doctor --json | ruby -rjson -e '
   raise "schema mismatch" unless data.fetch("schemaVersion") == "1"
   raise "command mismatch" unless data.fetch("command") == "doctor"
   raise "missing checks" unless data.fetch("checks").is_a?(Array)
+  names = data.fetch("checks").map { |c| c.fetch("name") }
+  %w[pacman-lock github-raw aur display-manager].each do |name|
+    raise "missing doctor check #{name}" unless names.include?(name)
+  end
 '
 
 echo "==> recovery hints"

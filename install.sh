@@ -39,6 +39,7 @@ FORCE_INSTALL=0
 NO_STATE=0
 RESUME_INSTALL=0
 OUTPUT_JSON=0
+STATUS_VERBOSE=0
 ARCHDEVKIT_LOG_FILE=""
 MODULE_SKIPPED_LIST=""
 
@@ -51,7 +52,7 @@ ArchDevKit - Arch Linux 工作站初始化工具
   bash install.sh menu
   bash install.sh plan [base|dns|archlinuxcn|git|runtime|nvim|docker|fonts|shell|desktop|proxy|dev|workstation]
   bash install.sh install [base|dns|archlinuxcn|git|runtime|nvim|docker|fonts|shell|desktop|proxy|dev|workstation]
-  bash install.sh status [module]
+  bash install.sh status [module] [--verbose]
   bash install.sh doctor
   bash install.sh config [show|init|validate]
   bash install.sh reset-state [module|all]
@@ -67,6 +68,7 @@ ArchDevKit - Arch Linux 工作站初始化工具
   --resume                  从状态记录继续，已成功模块自动跳过
   --no-state                不读取或写入模块状态
   --json                    plan/status/doctor 输出 JSON
+  --verbose, -v             status 输出状态文件、指纹和建议动作详情
   --config-file PATH        加载指定用户配置文件
   --no-config-file          不加载用户配置文件
   --no-china                不配置 npm/pip 国内源
@@ -146,6 +148,7 @@ parse_args() {
       --resume) RESUME_INSTALL=1; shift ;;
       --no-state) NO_STATE=1; shift ;;
       --json) OUTPUT_JSON=1; shift ;;
+      --verbose|-v) STATUS_VERBOSE=1; shift ;;
       --config-file)
         [[ $# -ge 2 && -n "${2:-}" ]] || die "--config-file 需要路径"
         ARCHDEVKIT_CONFIG_FILE="${2}"

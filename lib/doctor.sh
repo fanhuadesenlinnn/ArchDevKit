@@ -80,6 +80,50 @@ doctor_check_network_host() {
   fi
 }
 
+doctor_check_pacman_lock() {
+  local lock_file="/var/lib/pacman/db.lck"
+  if [[ -e "${lock_file}" ]]; then
+    doctor_check "pacman-lock" "warn" "检测到 ${lock_file}，请确认没有 pacman 正在运行"
+  else
+    doctor_check "pacman-lock" "ok" "未检测到 pacman 数据库锁"
+  fi
+}
+
+doctor_check_display_manager() {
+  local link target
+  link="/etc/systemd/system/display-manager.service"
+  if [[ ! -e "${link}" && ! -L "${link}" ]]; then
+    doctor_check "display-manager" "ok" "未检测到已绑定的 display-manager.service"
+    return 0
+  fi
+
+  target="$(readlink "${link}" 2>/dev/null || printf "%s" "${link}")"
+  if [[ "${ENABLE_SDDM:-0}" -eq 1 && "${target}" == *sddm* ]]; then
+    doctor_check "display-manager" "ok" "display-manager 已指向 SDDM"
+  elif [[ "${ENABLE_SDDM:-0}" -eq 1 ]]; then
+    doctor_check "display-manager" "warn" "display-manager 当前不是 SDDM：${target}"
+  else
+    doctor_check "display-manager" "ok" "当前配置不启用 SDDM，已有 display-manager：${target}"
+  fi
+}
+
+doctor_check_mihomo_config() {
+  local config_file="${MIHOMO_CONFIG_FILE:-/etc/mihomo/config.yaml}"
+  [[ "${PROXY_CORE:-mihomo}" == "mihomo" ]] || return 0
+
+  if need_cmd mihomo; then
+    doctor_check "mihomo-bin" "ok" "mihomo 命令可用"
+  else
+    doctor_check "mihomo-bin" "warn" "mihomo 尚未安装；安装 proxy 模块时会处理"
+  fi
+
+  if [[ -f "${config_file}" ]]; then
+    doctor_check "mihomo-config" "ok" "已发现 ${config_file}"
+  else
+    doctor_check "mihomo-config" "ok" "未发现已安装配置，proxy 模块会写入：${config_file}"
+  fi
+}
+
 show_doctor() {
   DOCTOR_JSON_ITEMS=()
   if [[ "${OUTPUT_JSON:-0}" -ne 1 ]]; then
@@ -100,7 +144,10 @@ show_doctor() {
   doctor_check_command bash fail "bash 可用"
   doctor_check_command ruby warn "ruby 可用，scripts/test.sh 需要"
   doctor_check_command sha256sum fail "模块状态指纹需要 sha256sum"
+  doctor_check_pacman_lock
   doctor_check_network_host github.com "github"
+  doctor_check_network_host raw.githubusercontent.com "github-raw"
+  doctor_check_network_host aur.archlinux.org "aur"
   if [[ "${ENABLE_GITHUB_PROXY:-0}" -eq 1 && -n "${GITHUB_PROXY:-}" ]]; then
     doctor_check_network_host "$(printf "%s" "${GITHUB_PROXY}" | sed -E 's#^https?://##;s#/.*$##;s#:.*$##')" "github-proxy"
   fi
@@ -113,6 +160,8 @@ show_doctor() {
   else
     doctor_check "mihomo-secret" "ok" "控制接口配置正常"
   fi
+  doctor_check_display_manager
+  doctor_check_mihomo_config
 
   if [[ "${OUTPUT_JSON:-0}" -eq 1 ]]; then
     local item first=1 name status detail
