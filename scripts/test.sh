@@ -95,6 +95,17 @@ file_output="$(
 [[ "${file_output}" == *"render files/sing-box/config.json.tpl -> /tmp/sing-box.json"* ]] || { echo "missing user render"; exit 1; }
 [[ "${file_output}" == *"sudo render files/sing-box/config.json.tpl -> /etc/sing-box/config.json"* ]] || { echo "missing root render"; exit 1; }
 
+echo "==> package helpers"
+package_output="$(
+  bash -c '
+    set -Eeuo pipefail
+    source lib/common.sh
+    source lib/packages.sh
+    dedupe_list git curl git "" curl jq
+  '
+)"
+[[ "${package_output}" == $'git\ncurl\njq' ]] || { echo "dedupe_list mismatch"; exit 1; }
+
 echo "==> doctor json"
 bash install.sh doctor --json | ruby -rjson -e '
   data = JSON.parse(STDIN.read)
