@@ -7,7 +7,7 @@ REPO_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 cd "${REPO_DIR}"
 
 echo "==> bash syntax"
-bash -n install.sh lib/*.sh modules/*.sh
+bash -n install.sh lib/*.sh modules/*.sh modules/desktop/*.sh
 
 echo "==> plan json"
 bash install.sh plan workstation --json | ruby -rjson -e '
@@ -105,6 +105,28 @@ package_output="$(
   '
 )"
 [[ "${package_output}" == $'git\ncurl\njq' ]] || { echo "dedupe_list mismatch"; exit 1; }
+
+echo "==> desktop package split"
+desktop_package_output="$(
+  bash -c '
+    set -Eeuo pipefail
+    SCRIPT_DIR="$PWD"
+    source install_vars
+    source lib/common.sh
+    source lib/packages.sh
+    source modules/desktop/packages.sh
+    GPU_TYPE=vmware
+    HYPRLAND_CONFIG_MODE=hyprdots
+    ENABLE_BLUETOOTH=1
+    ENABLE_SDDM=1
+    desktop_hyprdots_packages | grep -E "^(hyprland|bluez|sddm)$"
+    effective_gpu_type
+  '
+)"
+[[ "${desktop_package_output}" == *"hyprland"* ]] || { echo "missing hyprland package"; exit 1; }
+[[ "${desktop_package_output}" == *"bluez"* ]] || { echo "missing bluetooth package"; exit 1; }
+[[ "${desktop_package_output}" == *"sddm"* ]] || { echo "missing sddm package"; exit 1; }
+[[ "${desktop_package_output}" == *"vmware"* ]] || { echo "missing gpu override"; exit 1; }
 
 echo "==> doctor json"
 bash install.sh doctor --json | ruby -rjson -e '

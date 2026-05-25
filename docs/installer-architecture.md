@@ -24,27 +24,31 @@ ArchDevKit 的安装器按“入口薄、模块深、配置先行”的方向演
 
    每个安装模块维护自己的安装、验证、依赖判断和配置渲染逻辑。例如 Proxy 模块负责 Mihomo/sing-box，DNS 模块负责 systemd-resolved。
 
-6. `lib/files.sh`
+6. `modules/desktop/*.sh`
+
+   Hyprland 桌面模块的子模块。`modules/desktop_hyprland.sh` 负责桌面安装总流程，子模块逐步承接软件包、服务、输入法、VM 和 hyprdots 配置等深层实现。
+
+7. `lib/files.sh`
 
    集中维护文件写入、root 文件写入、临时文件安装和模板渲染。模块只表达目标路径、权限和模板变量，避免重复 `mktemp` / `backup` / `install -m` 细节。
 
-7. `lib/systemd.sh`
+8. `lib/systemd.sh`
 
    集中维护 systemd 操作，包括系统 unit 探测、daemon-reload、系统服务启用、开机启用和用户服务启用。模块只表达“要启用哪个服务”，不复制 daemon-reload / enable / active 检查流程。
 
-8. `lib/packages.sh`
+9. `lib/packages.sh`
 
    集中维护 pacman、archlinuxcn 兜底、AUR helper、makepkg 回退和命令依赖安装。模块只表达要安装的软件包，不直接关心包来源选择和 AUR 引导路径。
 
-9. `lib/doctor.sh`
+10. `lib/doctor.sh`
 
    集中维护环境诊断。新增检查项时优先放在这里，避免散落到入口流程。
 
-10. `lib/recovery.sh`
+11. `lib/recovery.sh`
 
    安装失败恢复提示。安装流程会记录当前阶段和当前模块；失败时输出目标、模块、日志、重试命令和状态清理命令。
 
-11. `lib/json.sh`
+12. `lib/json.sh`
 
    统一 JSON 字段和转义逻辑。`plan/status/doctor --json` 都应保持 `schemaVersion`、`command`、`generatedAt` 和 `warnings`。
 
@@ -52,6 +56,7 @@ ArchDevKit 的安装器按“入口薄、模块深、配置先行”的方向演
 
 - 新增用户可配置项时，先放入 `install_vars`，再加入 `lib/config.sh` 的白名单和必要校验。
 - 新增安装模块时，模块自身放到 `modules/`，并在 `lib/module_registry.sh` 注册目标、描述、影响范围、状态指纹、轻量校验和执行函数。
+- 拆分大模块时优先放到模块同名子目录，例如 Hyprland 子能力放入 `modules/desktop/`，让原模块文件保持编排职责。
 - 新增机器可读输出时，复用 `lib/json.sh`，不要在调用点手写未转义 JSON。
 - 新增诊断项时，优先更新 `lib/doctor.sh`，并让 `scripts/test.sh` 至少覆盖 JSON 可解析。
 - 新增文件写入、root 文件写入或模板渲染时，复用 `lib/files.sh`，不要在模块里重复 `mktemp` / `backup` / `install -m` 流程。
