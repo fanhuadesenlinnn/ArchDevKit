@@ -86,15 +86,22 @@ bash install.sh proxy
 bash install.sh config
 ```
 
+生成个人配置文件：
+
+```bash
+bash install.sh config init
+```
+
 ## 命令体系
 
-ArchDevKit 的交互式和参数式安装现在共用同一套安装计划。无参数运行会进入交互式向导，所有问题都会显示 `install_vars` 中的当前默认值，直接回车即采用推荐配置。
+ArchDevKit 的交互式和参数式安装现在共用同一套安装计划。无参数运行会进入交互式向导，菜单会先逐行展示编号、模块名和说明；输入框只保留默认编号。直接回车采用推荐配置，也可以输入编号或模块名。
 
 ```bash
 bash install.sh menu
 bash install.sh plan workstation
 bash install.sh install workstation
 bash install.sh status
+bash install.sh status --verbose
 bash install.sh doctor
 bash install.sh reset-state proxy
 ```
@@ -126,6 +133,7 @@ JSON 输出包含稳定的 `schemaVersion`、`command`、`generatedAt`、`warnin
 安装成功后，模块状态会写入 `ARCHDEVKIT_STATE_DIR`，默认是 `~/.local/state/archdevkit`。后续重复安装同一模块时，如果状态、关键配置指纹和轻量校验都通过，会自动跳过；需要重跑时使用：
 
 ```bash
+bash install.sh status proxy --verbose
 bash install.sh install proxy --force
 bash install.sh reset-state proxy
 ```
@@ -147,6 +155,16 @@ install_vars < 用户配置文件 < 命令行参数
 ```
 
 默认会尝试读取 `~/.config/archdevkit/config.env`。该文件不是 shell 脚本，安装器不会直接 `source`，只会读取白名单内的 `KEY=value`，避免用户配置文件执行任意命令。列表值可以用逗号分隔。
+
+可以用当前默认值生成一份个人配置：
+
+```bash
+bash install.sh config init
+bash install.sh config validate
+bash install.sh config show
+```
+
+如果配置文件已存在，`config init` 默认不会覆盖；确认要重建时使用 `--force`。
 
 示例：
 
@@ -203,6 +221,7 @@ bash install.sh nvim --github-proxy https://gh-proxy.com/
 --resume                  保留兼容参数；默认已经会从成功状态跳过已安装模块
 --no-state                不读取或写入模块状态
 --json                    plan/status/doctor 输出 JSON
+--verbose, -v             status 输出状态文件、指纹和建议动作详情
 --config-file PATH        加载指定用户配置文件
 --no-config-file          不加载用户配置文件
 --no-china                不配置 npm/pip 国内源
@@ -377,6 +396,7 @@ bash install.sh proxy --sing-box-config /path/to/config.json
 ## 设计原则
 
 - 默认值可用，直接回车即可使用推荐配置
+- 交互式菜单展示说明，输入框只负责选择编号或名称
 - 参数可覆盖默认值
 - 交互式和参数式走同一套模块函数
 - 已成功安装的模块会基于状态、配置指纹和轻量校验自动跳过，需要重跑时显式使用 `--force`
