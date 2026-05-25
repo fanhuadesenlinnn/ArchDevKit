@@ -106,6 +106,25 @@ package_output="$(
 )"
 [[ "${package_output}" == $'git\ncurl\njq' ]] || { echo "dedupe_list mismatch"; exit 1; }
 
+echo "==> interactive menu ui"
+menu_output="$(
+  printf '\n2\nproxy\nbad\n1\n' | bash -c '
+    set -Eeuo pipefail
+    source lib/common.sh
+    source lib/ui.sh
+    one="$(ask_menu_default "安装目标" "workstation" "base|基础环境" "dev|开发环境" "workstation|完整工作站" "proxy|代理")"
+    two="$(ask_menu_default "安装目标" "workstation" "base|基础环境" "dev|开发环境" "workstation|完整工作站" "proxy|代理")"
+    three="$(ask_menu_default "安装目标" "workstation" "base|基础环境" "dev|开发环境" "workstation|完整工作站" "proxy|代理")"
+    four="$(ask_menu_default "安装目标" "workstation" "base|基础环境" "dev|开发环境" "workstation|完整工作站" "proxy|代理")"
+    printf "choices=%s,%s,%s,%s\n" "${one}" "${two}" "${three}" "${four}"
+  ' 2>&1
+)"
+[[ "${menu_output}" == *"1. base"* ]] || { echo "missing numbered menu"; exit 1; }
+[[ "${menu_output}" == *"默认：3. workstation"* ]] || { echo "missing menu default"; exit 1; }
+[[ "${menu_output}" == *"请选择安装目标 [3]:"* ]] || { echo "missing short prompt"; exit 1; }
+[[ "${menu_output}" == *"请输入编号或可选名称"* ]] || { echo "missing invalid choice warning"; exit 1; }
+[[ "${menu_output}" == *"choices=workstation,dev,proxy,base"* ]] || { echo "menu choices mismatch"; exit 1; }
+
 echo "==> desktop package split"
 desktop_package_output="$(
   bash -c '

@@ -27,6 +27,7 @@ source "${SCRIPT_DIR}/lib/module_registry.sh"
 source "${SCRIPT_DIR}/lib/config.sh"
 source "${SCRIPT_DIR}/lib/plan.sh"
 source "${SCRIPT_DIR}/lib/state.sh"
+source "${SCRIPT_DIR}/lib/ui.sh"
 source "${SCRIPT_DIR}/lib/doctor.sh"
 source "${SCRIPT_DIR}/lib/recovery.sh"
 
@@ -483,55 +484,47 @@ confirm_and_run_target() {
   fi
 }
 
-ask_value_default() {
-  local prompt="$1" current="$2" answer
-  read -r -p "${prompt} [${current}]: " answer
-  printf "%s" "${answer:-${current}}"
-}
-
-ask_bool_default() {
-  local prompt="$1" current="$2" answer
-  if [[ "${current:-0}" -eq 1 ]]; then
-    read -r -p "${prompt} [Y/n]: " answer
-    case "${answer}" in
-      n|N|no|NO|No) printf "0" ;;
-      *) printf "1" ;;
-    esac
-  else
-    read -r -p "${prompt} [y/N]: " answer
-    case "${answer}" in
-      y|Y|yes|YES|Yes) printf "1" ;;
-      *) printf "0" ;;
-    esac
-  fi
-}
-
-ask_choice_default() {
-  local prompt="$1" current="$2" choices="$3" answer choice
-  while true; do
-    read -r -p "${prompt} [${current}] (${choices}): " answer
-    answer="${answer:-${current}}"
-    for choice in ${choices}; do
-      if [[ "${answer}" == "${choice}" ]]; then
-        printf "%s" "${answer}"
-        return 0
-      fi
-    done
-    printf '\033[33m----> 请输入可选值之一：%s\033[0m\n' "${choices}" >&2
-  done
-}
-
 show_menu() {
   clear || true
   echo "----------------------------------------------------------"
   echo "[ArchDevKit 交互式安装向导]"
   echo "直接回车会使用 install_vars 中的默认值。"
   echo "----------------------------------------------------------"
-  menu_target_overview
 
-  TARGET="$(ask_choice_default "选择安装目标" "${TARGET}" "base dev workstation custom dns archlinuxcn git runtime nvim docker fonts shell desktop proxy")"
+  TARGET="$(
+    ask_menu_default "安装目标" "${TARGET}" \
+      "base|基础环境：基础命令行工具、同步/排障工具和 paru/yay" \
+      "dev|开发环境：base + archlinuxcn + dns + git + runtime + nvim + fonts + shell + proxy" \
+      "workstation|完整工作站：dev + Hyprland 桌面" \
+      "custom|自定义入口：先选起点，再按后续问题微调" \
+      "dns|系统 DNS：systemd-resolved、NetworkManager DNS 后端和 fallback DNS" \
+      "archlinuxcn|软件源：archlinuxcn 源、keyring 和可选 mirrorlist" \
+      "git|Git 环境：git、gh、openssh 和基础 Git 配置" \
+      "runtime|开发运行时：nodejs、npm、python、go、mise 和国内镜像" \
+      "nvim|Neovim：安装 Neovim、个人配置和可选插件同步" \
+      "docker|Docker：docker/compose、镜像源、服务和用户组" \
+      "fonts|字体：中文字体、Emoji、Nerd Font、Monaco 和 fontconfig" \
+      "shell|Shell：Zsh、Oh My Zsh、Powerlevel10k、插件和默认 shell" \
+      "desktop|桌面：Hyprland、SDDM、Fcitx5/Rime、浏览器、终端和 hyprdots" \
+      "proxy|代理：Mihomo 或 sing-box、MetaCubeXD 和 shell 代理环境模板"
+  )"
   if [[ "${TARGET}" == "custom" ]]; then
-    TARGET="$(ask_choice_default "选择自定义起点" "workstation" "base dev workstation dns archlinuxcn git runtime nvim docker fonts shell desktop proxy")"
+    TARGET="$(
+      ask_menu_default "自定义起点" "workstation" \
+        "base|基础环境" \
+        "dev|开发环境套餐" \
+        "workstation|完整工作站套餐" \
+        "dns|只配置系统 DNS" \
+        "archlinuxcn|只配置 archlinuxcn 源" \
+        "git|只安装 Git 环境" \
+        "runtime|只安装开发运行时" \
+        "nvim|只安装 Neovim" \
+        "docker|只安装 Docker" \
+        "fonts|只安装字体环境" \
+        "shell|只安装 Shell 环境" \
+        "desktop|只安装 Hyprland 桌面" \
+        "proxy|只安装代理环境"
+    )"
   fi
 
   if [[ "${TARGET}" == "dev" || "${TARGET}" == "workstation" ]]; then
@@ -541,7 +534,11 @@ show_menu() {
   fi
 
   if [[ "${TARGET}" == "proxy" || ( "${TARGET}" =~ ^(dev|workstation)$ && "${ENABLE_PROXY:-0}" -eq 1 ) ]]; then
-    PROXY_CORE="$(ask_choice_default "代理核心" "${PROXY_CORE:-mihomo}" "mihomo sing-box")"
+    PROXY_CORE="$(
+      ask_menu_default "代理核心" "${PROXY_CORE:-mihomo}" \
+        "mihomo|Mihomo/Clash.Meta 兼容核心，适合规则分流和 MetaCubeXD" \
+        "sing-box|sing-box 用户服务，配置更轻量"
+    )"
     PROXY_AUTO_ENABLE_SERVICE="$(ask_bool_default "安装后自动启用代理服务" "${PROXY_AUTO_ENABLE_SERVICE:-1}")"
     if [[ "${PROXY_CORE}" == "mihomo" ]]; then
       ENABLE_METACUBEXD="$(ask_bool_default "安装 MetaCubeXD 面板" "${ENABLE_METACUBEXD:-1}")"
@@ -549,12 +546,32 @@ show_menu() {
   fi
 
   if [[ "${TARGET}" == "desktop" || "${TARGET}" == "workstation" ]]; then
-    GPU_TYPE="$(ask_choice_default "GPU 类型" "${GPU_TYPE:-auto}" "auto intel amd nvidia vmware virtio qxl virtualbox none")"
+    GPU_TYPE="$(
+      ask_menu_default "GPU 类型" "${GPU_TYPE:-auto}" \
+        "auto|自动检测" \
+        "intel|Intel 核显" \
+        "amd|AMD 显卡" \
+        "nvidia|NVIDIA 显卡" \
+        "vmware|VMware 虚拟机" \
+        "virtio|QEMU/KVM virtio" \
+        "qxl|QEMU/KVM QXL" \
+        "virtualbox|VirtualBox 虚拟机" \
+        "none|不安装专用显卡/虚拟机包"
+    )"
     ENABLE_SDDM="$(ask_bool_default "启用 SDDM 登录管理器" "${ENABLE_SDDM:-1}")"
-    HYPRLAND_CONFIG_MODE="$(ask_choice_default "Hyprland 配置模式" "${HYPRLAND_CONFIG_MODE:-hyprdots}" "hyprdots template skip")"
+    HYPRLAND_CONFIG_MODE="$(
+      ask_menu_default "Hyprland 配置模式" "${HYPRLAND_CONFIG_MODE:-hyprdots}" \
+        "hyprdots|安装项目内置 hyprdots 配置" \
+        "template|安装轻量默认模板" \
+        "skip|只安装软件包，不写入桌面配置"
+    )"
     ENABLE_FCITX5="$(ask_bool_default "启用 Fcitx5 输入法" "${ENABLE_FCITX5:-1}")"
     if [[ "${ENABLE_FCITX5:-0}" -eq 1 ]]; then
-      INPUT_METHOD_ENGINE="$(ask_choice_default "输入法引擎" "${INPUT_METHOD_ENGINE:-rime}" "rime pinyin")"
+      INPUT_METHOD_ENGINE="$(
+        ask_menu_default "输入法引擎" "${INPUT_METHOD_ENGINE:-rime}" \
+          "rime|Fcitx5 + Rime，适合个人方案和可同步配置" \
+          "pinyin|Fcitx5 拼音，少配置、轻量使用"
+      )"
       if [[ "${INPUT_METHOD_ENGINE}" == "rime" ]]; then
         RIME_SCHEMA="$(ask_value_default "Rime 默认方案" "${RIME_SCHEMA:-luna_pinyin_simp}")"
         INSTALL_RIME_CONFIG="$(ask_bool_default "安装 Rime 配置仓库" "${INSTALL_RIME_CONFIG:-1}")"
