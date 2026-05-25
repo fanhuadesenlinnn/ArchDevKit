@@ -28,7 +28,7 @@ dns_join_values() {
 
 configure_systemd_resolved_dns() {
   local target="/etc/systemd/resolved.conf.d/90-archdevkit-dns.conf"
-  local tmp_file dns_servers fallback_servers
+  local dns_servers fallback_servers
 
   dns_servers="$(dns_join_values "${DNS_SERVERS[@]:-223.5.5.5 223.6.6.6 119.29.29.29 114.114.114.114}")"
   fallback_servers="$(dns_join_values \
@@ -36,13 +36,7 @@ configure_systemd_resolved_dns() {
     "${DNS_FOREIGN_FALLBACK_SERVERS[@]:-1.1.1.1 8.8.8.8}")"
 
   log_info "写入 systemd-resolved DNS 配置：${target}"
-  if [[ "${DRY_RUN:-0}" -eq 1 ]]; then
-    echo "+ sudo install DNS config -> ${target}"
-    return 0
-  fi
-
-  tmp_file="$(mktemp)"
-  cat > "${tmp_file}" <<EOF
+  write_root_file_from_stdin "${target}" 0644 <<EOF
 # ArchDevKit generated. Mainland China friendly DNS baseline.
 [Resolve]
 DNS=${dns_servers% }
@@ -53,37 +47,21 @@ Cache=${DNS_CACHE:-yes}
 LLMNR=${DNS_LLMNR:-no}
 MulticastDNS=${DNS_MULTICAST_DNS:-no}
 EOF
-
-  run_sudo install -d -m 0755 /etc/systemd/resolved.conf.d
-  backup_file_root "${target}"
-  run_sudo install -m 0644 "${tmp_file}" "${target}"
-  rm -f "${tmp_file}"
 }
 
 configure_networkmanager_dns_backend() {
   [[ "${DNS_CONFIGURE_NETWORKMANAGER:-1}" -eq 1 ]] || return 0
 
   local target="/etc/NetworkManager/conf.d/90-archdevkit-dns.conf"
-  local tmp_file
 
   log_info "配置 NetworkManager 使用 systemd-resolved：${target}"
-  if [[ "${DRY_RUN:-0}" -eq 1 ]]; then
-    echo "+ sudo install NetworkManager DNS config -> ${target}"
-    return 0
-  fi
 
-  tmp_file="$(mktemp)"
-  cat > "${tmp_file}" <<'EOF'
+  write_root_file_from_stdin "${target}" 0644 <<'EOF'
 # ArchDevKit generated. Keep NetworkManager and systemd-resolved aligned.
 [main]
 dns=systemd-resolved
 rc-manager=symlink
 EOF
-
-  run_sudo install -d -m 0755 /etc/NetworkManager/conf.d
-  backup_file_root "${target}"
-  run_sudo install -m 0644 "${tmp_file}" "${target}"
-  rm -f "${tmp_file}"
 }
 
 enable_systemd_resolved() {

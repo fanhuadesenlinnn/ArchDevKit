@@ -78,6 +78,23 @@ systemd_output="$(
 [[ "${systemd_output}" == *"systemctl --user daemon-reload"* ]] || { echo "missing user daemon-reload"; exit 1; }
 [[ "${systemd_output}" == *"systemctl --user enable --now archdevkit-sing-box.service"* ]] || { echo "missing user enable"; exit 1; }
 
+echo "==> file helpers"
+file_output="$(
+  DRY_RUN=1 bash -c '
+    set -Eeuo pipefail
+    source lib/common.sh
+    source lib/files.sh
+    write_file_from_stdin /tmp/archdevkit-user.conf 0644 <<<"user"
+    write_root_file_from_stdin /etc/archdevkit-root.conf 0600 <<<"root"
+    render_template_file files/sing-box/config.json.tpl /tmp/sing-box.json 0600 -e "s/__SING_BOX_MIXED_PORT__/7890/g"
+    render_template_root_file files/sing-box/config.json.tpl /etc/sing-box/config.json 0600 -e "s/__SING_BOX_MIXED_PORT__/7890/g"
+  '
+)"
+[[ "${file_output}" == *"write /tmp/archdevkit-user.conf"* ]] || { echo "missing user write"; exit 1; }
+[[ "${file_output}" == *"sudo write /etc/archdevkit-root.conf"* ]] || { echo "missing root write"; exit 1; }
+[[ "${file_output}" == *"render files/sing-box/config.json.tpl -> /tmp/sing-box.json"* ]] || { echo "missing user render"; exit 1; }
+[[ "${file_output}" == *"sudo render files/sing-box/config.json.tpl -> /etc/sing-box/config.json"* ]] || { echo "missing root render"; exit 1; }
+
 echo "==> doctor json"
 bash install.sh doctor --json | ruby -rjson -e '
   data = JSON.parse(STDIN.read)

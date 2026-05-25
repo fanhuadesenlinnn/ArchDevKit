@@ -55,7 +55,6 @@ proxy_config_source_to_file() {
   local source="$1" target="$2" actual_source tmp_file
   [[ -n "${target}" ]] || die "代理配置目标文件为空"
 
-  mkdir -p "$(dirname "${target}")"
   [[ -n "${source}" ]] || return 1
   actual_source="$(github_proxy_url "${source}")"
 
@@ -81,8 +80,7 @@ proxy_config_source_to_file() {
       ;;
   esac
 
-  backup_path "${target}"
-  install -m 0600 "${tmp_file}" "${target}"
+  install_file_from_temp "${tmp_file}" "${target}" 0600
   rm -f "${tmp_file}"
 }
 
@@ -114,9 +112,7 @@ proxy_config_source_to_root_file() {
       ;;
   esac
 
-  run_sudo mkdir -p "$(dirname "${target}")"
-  backup_file_root "${target}"
-  run_sudo install -m "${mode}" "${tmp_file}" "${target}"
+  install_root_file_from_temp "${tmp_file}" "${target}" "${mode}"
   rm -f "${tmp_file}"
 }
 
@@ -227,48 +223,6 @@ warn_mihomo_exposure() {
   fi
 }
 
-render_proxy_template() {
-  local template="$1" target="$2" mode="${3:-0600}" tmp_file
-  shift 3 || true
-
-  [[ -f "${template}" ]] || die "代理模板不存在：${template}"
-  [[ -n "${target}" ]] || die "代理模板目标为空"
-
-  if [[ "${DRY_RUN:-0}" -eq 1 ]]; then
-    echo "+ render ${template} -> ${target}"
-    return 0
-  fi
-
-  mkdir -p "$(dirname "${target}")"
-  tmp_file="$(mktemp)"
-  sed "$@" "${template}" > "${tmp_file}"
-
-  backup_path "${target}"
-  install -m "${mode}" "${tmp_file}" "${target}"
-  rm -f "${tmp_file}"
-}
-
-render_proxy_template_root() {
-  local template="$1" target="$2" mode="${3:-0600}" tmp_file
-  shift 3 || true
-
-  [[ -f "${template}" ]] || die "代理模板不存在：${template}"
-  [[ -n "${target}" ]] || die "代理模板目标为空"
-
-  if [[ "${DRY_RUN:-0}" -eq 1 ]]; then
-    echo "+ sudo render ${template} -> ${target}"
-    return 0
-  fi
-
-  tmp_file="$(mktemp)"
-  sed "$@" "${template}" > "${tmp_file}"
-
-  run_sudo mkdir -p "$(dirname "${target}")"
-  backup_file_root "${target}"
-  run_sudo install -m "${mode}" "${tmp_file}" "${target}"
-  rm -f "${tmp_file}"
-}
-
 render_mihomo_config_template() {
   local template="$1" target="$2"
   local allow_lan secret external_ui_line external_ui_dir
@@ -283,7 +237,7 @@ render_mihomo_config_template() {
     external_ui_line=""
   fi
 
-  render_proxy_template_root "${template}" "${target}" 0600 \
+  render_template_root_file "${template}" "${target}" 0600 \
     -e "s/__MIHOMO_MIXED_PORT__/$(sed_escape_replacement "${MIHOMO_MIXED_PORT:-7890}")/g" \
     -e "s/__MIHOMO_ALLOW_LAN__/${allow_lan}/g" \
     -e "s/__MIHOMO_BIND_ADDRESS__/$(sed_escape_replacement "${MIHOMO_BIND_ADDRESS:-127.0.0.1}")/g" \
@@ -301,7 +255,7 @@ render_default_mihomo_config() {
 render_sing_box_config_template() {
   local template="$1" target="$2"
 
-  render_proxy_template "${template}" "${target}" 0600 \
+  render_template_file "${template}" "${target}" 0600 \
     -e "s/__SING_BOX_MIXED_PORT__/$(sed_escape_replacement "${SING_BOX_MIXED_PORT:-7890}")/g"
 }
 

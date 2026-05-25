@@ -24,19 +24,23 @@ ArchDevKit 的安装器按“入口薄、模块深、配置先行”的方向演
 
    每个安装模块维护自己的安装、验证、依赖判断和配置渲染逻辑。例如 Proxy 模块负责 Mihomo/sing-box，DNS 模块负责 systemd-resolved。
 
-6. `lib/systemd.sh`
+6. `lib/files.sh`
+
+   集中维护文件写入、root 文件写入、临时文件安装和模板渲染。模块只表达目标路径、权限和模板变量，避免重复 `mktemp` / `backup` / `install -m` 细节。
+
+7. `lib/systemd.sh`
 
    集中维护 systemd 操作，包括系统 unit 探测、daemon-reload、系统服务启用、开机启用和用户服务启用。模块只表达“要启用哪个服务”，不复制 daemon-reload / enable / active 检查流程。
 
-7. `lib/doctor.sh`
+8. `lib/doctor.sh`
 
    集中维护环境诊断。新增检查项时优先放在这里，避免散落到入口流程。
 
-8. `lib/recovery.sh`
+9. `lib/recovery.sh`
 
    安装失败恢复提示。安装流程会记录当前阶段和当前模块；失败时输出目标、模块、日志、重试命令和状态清理命令。
 
-9. `lib/json.sh`
+10. `lib/json.sh`
 
    统一 JSON 字段和转义逻辑。`plan/status/doctor --json` 都应保持 `schemaVersion`、`command`、`generatedAt` 和 `warnings`。
 
@@ -46,6 +50,7 @@ ArchDevKit 的安装器按“入口薄、模块深、配置先行”的方向演
 - 新增安装模块时，模块自身放到 `modules/`，并在 `lib/module_registry.sh` 注册目标、描述、影响范围、状态指纹、轻量校验和执行函数。
 - 新增机器可读输出时，复用 `lib/json.sh`，不要在调用点手写未转义 JSON。
 - 新增诊断项时，优先更新 `lib/doctor.sh`，并让 `scripts/test.sh` 至少覆盖 JSON 可解析。
+- 新增文件写入、root 文件写入或模板渲染时，复用 `lib/files.sh`，不要在模块里重复 `mktemp` / `backup` / `install -m` 流程。
 - 新增 systemd 服务启停或 unit 探测时，复用 `lib/systemd.sh`，不要在模块内重复 `systemctl` 流程。
 - 新增安装阶段时，保留 `lib/recovery.sh` 的阶段/模块上下文，让失败输出仍然能指向可恢复动作。
 - 默认行为要同时考虑交互式和命令行安装；能在 `install_vars` 表达的默认值，不应只写死在菜单问题里。
@@ -56,6 +61,7 @@ ArchDevKit 的安装器按“入口薄、模块深、配置先行”的方向演
 
 - Bash 语法检查
 - `plan/status/doctor --json` 解析和核心字段
+- file helper 的 dry-run 输出
 - systemd helper 的 dry-run 输出
 - 失败恢复提示中的目标、模块、日志和重试命令
 - 用户配置文件覆盖
