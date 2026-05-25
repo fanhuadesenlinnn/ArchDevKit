@@ -214,22 +214,6 @@ install_hyprland_packages() {
   install_input_method_packages
 }
 
-install_input_method_packages() {
-  [[ "${ENABLE_FCITX5:-0}" -eq 1 ]] || {
-    log_warn "当前配置未启用 Fcitx5，跳过输入法包安装"
-    return 0
-  }
-
-  case "${INPUT_METHOD_ENGINE:-rime}" in
-    rime)
-      install_packages_or_aur fcitx5 fcitx5-configtool fcitx5-gtk fcitx5-qt fcitx5-rime rime-luna-pinyin
-      ;;
-    *)
-      die "暂不支持的输入法引擎：${INPUT_METHOD_ENGINE}"
-      ;;
-  esac
-}
-
 install_browser_package() {
   local package="${BROWSER_PACKAGE:-google-chrome}"
   [[ -n "${package}" ]] || die "浏览器安装包为空"

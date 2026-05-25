@@ -155,6 +155,26 @@ desktop_service_output="$(
 [[ "${desktop_service_output}" == *"sudo write /etc/modules-load.d/archdevkit-vmware.conf"* ]] || { echo "missing vmware module config"; exit 1; }
 [[ "${desktop_service_output}" == *"systemctl --global enable pipewire.service"* ]] || { echo "missing pipewire global enable"; exit 1; }
 
+echo "==> desktop input method split"
+desktop_input_output="$(
+  DRY_RUN=1 bash -c '
+    set -Eeuo pipefail
+    SCRIPT_DIR="$PWD"
+    source install_vars
+    DRY_RUN=1
+    source lib/common.sh
+    source lib/files.sh
+    source lib/packages.sh
+    source modules/desktop/input_method.sh
+    ENABLE_FCITX5=1
+    INPUT_METHOD_ENGINE=rime
+    configure_fcitx5_env
+    configure_fcitx5_rime_profile
+  '
+)"
+[[ "${desktop_input_output}" == *"write ${HOME}/.config/environment.d/fcitx5.conf"* ]] || { echo "missing fcitx env write"; exit 1; }
+[[ "${desktop_input_output}" == *"write ${HOME}/.config/fcitx5/profile"* ]] || { echo "missing rime profile write"; exit 1; }
+
 echo "==> doctor json"
 bash install.sh doctor --json | ruby -rjson -e '
   data = JSON.parse(STDIN.read)
