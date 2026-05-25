@@ -175,6 +175,33 @@ desktop_input_output="$(
 [[ "${desktop_input_output}" == *"write ${HOME}/.config/environment.d/fcitx5.conf"* ]] || { echo "missing fcitx env write"; exit 1; }
 [[ "${desktop_input_output}" == *"write ${HOME}/.config/fcitx5/profile"* ]] || { echo "missing rime profile write"; exit 1; }
 
+echo "==> desktop vm split"
+desktop_vm_output="$(
+  DRY_RUN=1 bash -c '
+    set -Eeuo pipefail
+    SCRIPT_DIR="$PWD"
+    source install_vars
+    DRY_RUN=1
+    source lib/common.sh
+    source lib/packages.sh
+    source modules/desktop/packages.sh
+    source modules/desktop/vm.sh
+    tmp_home="$(mktemp -d)"
+    trap "rm -rf \"${tmp_home}\"" EXIT
+    HOME="${tmp_home}"
+    mkdir -p "${HOME}/.config/hypr"
+    printf "monitor=,preferred,auto,1\n" > "${HOME}/.config/hypr/hyprland.conf"
+    GPU_TYPE=vmware
+    VMWARE_FORCE_SOFTWARE_RENDERER=1
+    VM_HYPRLAND_DYNAMIC_RESIZE=1
+    configure_hyprland_gpu_env
+    configure_hyprland_virtualization_env
+  '
+)"
+[[ "${desktop_vm_output}" == *"enable Hyprland software renderer env for vmware"* ]] || { echo "missing vm software renderer"; exit 1; }
+[[ "${desktop_vm_output}" == *"keep VM Hyprland monitor dynamic"* ]] || { echo "missing vm monitor dry-run"; exit 1; }
+[[ "${desktop_vm_output}" == *"enable VM guest agent autostart for vmware"* ]] || { echo "missing vm autostart dry-run"; exit 1; }
+
 echo "==> doctor json"
 bash install.sh doctor --json | ruby -rjson -e '
   data = JSON.parse(STDIN.read)
