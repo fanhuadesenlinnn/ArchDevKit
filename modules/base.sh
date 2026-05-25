@@ -3,7 +3,7 @@
 # 负责安装最基础的命令行工具、编译工具和排障工具。
 
 base_packages() {
-  echo "base-devel git curl wget less unzip tar gzip xz jq rsync rclone net-tools iotop iftop nethogs ripgrep fd fzf bat eza tmux pciutils openssh ca-certificates"
+  echo "base-devel git curl wget less unzip tar gzip xz jq rsync rclone net-tools iotop iftop nethogs ripgrep fd fzf bat eza dust bottom procs bandwhich sd hyperfine just tmux pciutils openssh ca-certificates"
 }
 
 base_tool_commands() {
@@ -29,6 +29,13 @@ fd:fd
 fzf:fzf
 bat:bat
 eza:eza
+dust:dust
+bottom:btm
+procs:procs
+bandwhich:bandwhich
+sd:sd
+hyperfine:hyperfine
+just:just
 tmux:tmux
 pciutils:lspci
 openssh:ssh

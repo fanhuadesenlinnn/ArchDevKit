@@ -34,6 +34,10 @@ bash install.sh plan base --json | ruby -rjson -e '
   raise "base key mismatch" unless mod.fetch("key") == "base"
   raise "base description missing" if mod.fetch("description").empty?
 '
+base_plan_output="$(bash install.sh plan base)"
+for package in dust bottom procs bandwhich sd hyperfine just; do
+  [[ "${base_plan_output}" == *"${package}"* ]] || { echo "base plan missing ${package}"; exit 1; }
+done
 bash install.sh plan dev --json | ruby -rjson -e '
   data = JSON.parse(STDIN.read)
   keys = data.fetch("modules").map { |m| m.fetch("key") }
@@ -183,6 +187,8 @@ base_tool_output="$(
 )"
 [[ "${base_tool_output}" == *"[基础工具状态]"* ]] || { echo "missing base tool table"; exit 1; }
 [[ "${base_tool_output}" == *"git"* ]] || { echo "missing git in base tool table"; exit 1; }
+[[ "${base_tool_output}" == *"bottom"* ]] || { echo "missing bottom in base tool table"; exit 1; }
+[[ "${base_tool_output}" == *"hyperfine"* ]] || { echo "missing hyperfine in base tool table"; exit 1; }
 
 echo "==> ops toolkit module"
 ops_tmp="$(mktemp -d)"

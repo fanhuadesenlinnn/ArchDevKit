@@ -89,7 +89,7 @@ bash install.sh install proxy
 
 | 模块 | 用途 |
 | --- | --- |
-| `base` | 基础工具、同步工具、排障工具、现代 CLI 工具、tmux 配置、paru/yay |
+| `base` | 基础工具、同步/排障工具、现代 CLI 工具、tmux 配置、paru/yay |
 | `dns` | systemd-resolved 系统 DNS |
 | `archlinuxcn` | archlinuxcn 软件源 |
 | `git` | Git、GitHub CLI、OpenSSH 和基础 Git 配置 |
@@ -112,6 +112,8 @@ workstation = dev + desktop
 ```
 
 单独安装模块时，脚本只安装该模块需要的依赖，不会偷偷展开成完整工作站。
+
+`base` 模块内置的现代 CLI 工具包括 `rg`、`fd`、`bat`、`eza`、`dust`、`btm`、`procs`、`bandwhich`、`sd`、`hyperfine` 和 `just`。`mise` 保持在 `runtime` 模块中安装，因为它还会写入 shell 初始化和语言镜像配置。
 
 ## 配置
 
