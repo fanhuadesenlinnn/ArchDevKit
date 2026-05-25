@@ -26,7 +26,15 @@ ArchDevKit 的安装器按“入口薄、模块深、配置先行”的方向演
 
 6. `modules/desktop/*.sh`
 
-   Hyprland 桌面模块的子模块。`modules/desktop_hyprland.sh` 负责桌面安装总流程，子模块逐步承接软件包、服务、输入法、VM 和 hyprdots 配置等深层实现。
+   Hyprland 桌面模块的子模块。`modules/desktop_hyprland.sh` 只负责桌面安装总流程；子模块承接软件包、服务、输入法、虚拟机适配、hyprdots 配置、运行时辅助脚本和安装后验证。
+
+   - `packages.sh`：配置模式校验、GPU/虚拟化探测、桌面/浏览器/可选包安装。
+   - `services.sh`：NetworkManager、Bluetooth、PipeWire、SDDM 和虚拟机 guest 服务。
+   - `input_method.sh`：Fcitx5/Rime 环境变量、个人 Rime 配置仓库和 profile。
+   - `vm.sh`：虚拟显卡 3D 探测、Hyprland 软件渲染兜底和 VM 会话覆盖。
+   - `hyprdots.sh`：模板渲染、hyprdots 配置模块复制、壁纸目录和 Waybar 运行时文件。
+   - `helpers.sh`：终端、Neovide 和 VMware Wayland 会话 wrapper。
+   - `verify.sh`：Hyprland 桌面关键命令验证。
 
 7. `lib/files.sh`
 
@@ -74,6 +82,7 @@ ArchDevKit 的安装器按“入口薄、模块深、配置先行”的方向演
 - file helper 的 dry-run 输出
 - systemd helper 的 dry-run 输出
 - package helper 的基础列表处理
+- Hyprland 桌面子模块的 dry-run 路径，包括 packages、services、input method、VM、hyprdots、helpers 和 verify
 - 失败恢复提示中的目标、模块、日志和重试命令
 - 用户配置文件覆盖
 - Mihomo YAML 和 sing-box JSON 模板渲染
