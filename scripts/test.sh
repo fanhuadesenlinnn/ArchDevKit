@@ -227,6 +227,27 @@ desktop_hyprdots_output="$(
 [[ "${desktop_hyprdots_output}" == *"render ArchDevKit overrides"* ]] || { echo "missing hyprdots overrides"; exit 1; }
 [[ "${desktop_hyprdots_output}" == *"link "*"waybar/config -> config_new.jsonc"* ]] || { echo "missing waybar runtime links"; exit 1; }
 
+echo "==> desktop helper split"
+desktop_helper_output="$(
+  DRY_RUN=1 bash -c '
+    set -Eeuo pipefail
+    SCRIPT_DIR="$PWD"
+    source install_vars
+    DRY_RUN=1
+    source lib/common.sh
+    source modules/desktop/packages.sh
+    source modules/desktop/helpers.sh
+    tmp_home="$(mktemp -d)"
+    trap "rm -rf \"${tmp_home}\"" EXIT
+    HOME="${tmp_home}"
+    GPU_TYPE=vmware
+    install_desktop_runtime_helpers
+  '
+)"
+[[ "${desktop_helper_output}" == *"write "*"archdevkit-terminal"* ]] || { echo "missing terminal helper"; exit 1; }
+[[ "${desktop_helper_output}" == *"write "*"neovide"* ]] || { echo "missing neovide helper"; exit 1; }
+[[ "${desktop_helper_output}" == *"write "*"archdevkit-vmware-user"* ]] || { echo "missing vmware helper"; exit 1; }
+
 echo "==> doctor json"
 bash install.sh doctor --json | ruby -rjson -e '
   data = JSON.parse(STDIN.read)
