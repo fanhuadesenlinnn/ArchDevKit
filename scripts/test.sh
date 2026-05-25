@@ -112,6 +112,7 @@ desktop_package_output="$(
     set -Eeuo pipefail
     SCRIPT_DIR="$PWD"
     source install_vars
+    DRY_RUN=1
     source lib/common.sh
     source lib/packages.sh
     source modules/desktop/packages.sh
@@ -127,6 +128,32 @@ desktop_package_output="$(
 [[ "${desktop_package_output}" == *"bluez"* ]] || { echo "missing bluetooth package"; exit 1; }
 [[ "${desktop_package_output}" == *"sddm"* ]] || { echo "missing sddm package"; exit 1; }
 [[ "${desktop_package_output}" == *"vmware"* ]] || { echo "missing gpu override"; exit 1; }
+
+echo "==> desktop service split"
+desktop_service_output="$(
+  DRY_RUN=1 bash -c '
+    set -Eeuo pipefail
+    SCRIPT_DIR="$PWD"
+    source install_vars
+    DRY_RUN=1
+    source lib/common.sh
+    source lib/files.sh
+    source lib/packages.sh
+    source lib/systemd.sh
+    source modules/desktop/packages.sh
+    source modules/desktop/services.sh
+    GPU_TYPE=vmware
+    ENABLE_BLUETOOTH=1
+    HYPRLAND_CONFIG_MODE=hyprdots
+    enable_desktop_services
+    enable_desktop_audio_services
+  '
+)"
+[[ "${desktop_service_output}" == *"sudo systemctl enable --now NetworkManager.service"* ]] || { echo "missing NetworkManager enable"; exit 1; }
+[[ "${desktop_service_output}" == *"sudo systemctl enable --now bluetooth.service"* ]] || { echo "missing bluetooth enable"; exit 1; }
+[[ "${desktop_service_output}" == *"modprobe uinput"* ]] || { echo "missing vmware uinput"; exit 1; }
+[[ "${desktop_service_output}" == *"sudo write /etc/modules-load.d/archdevkit-vmware.conf"* ]] || { echo "missing vmware module config"; exit 1; }
+[[ "${desktop_service_output}" == *"systemctl --global enable pipewire.service"* ]] || { echo "missing pipewire global enable"; exit 1; }
 
 echo "==> doctor json"
 bash install.sh doctor --json | ruby -rjson -e '
