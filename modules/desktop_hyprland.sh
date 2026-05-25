@@ -15,6 +15,8 @@ source "${DESKTOP_MODULE_DIR}/desktop/vm.sh"
 source "${DESKTOP_MODULE_DIR}/desktop/hyprdots.sh"
 # shellcheck source=modules/desktop/helpers.sh
 source "${DESKTOP_MODULE_DIR}/desktop/helpers.sh"
+# shellcheck source=modules/desktop/verify.sh
+source "${DESKTOP_MODULE_DIR}/desktop/verify.sh"
 
 install_desktop_hyprland() {
   if is_done "desktop_hyprland"; then
@@ -47,21 +49,6 @@ install_desktop_hyprland() {
 
   mark_done "desktop_hyprland"
   log_info "Hyprland 桌面环境安装完成"
-}
-
-verify_hyprland() {
-  log_info "验证 Hyprland 关键命令"
-  run_cmd Hyprland --version || true
-  run_cmd waybar --version || true
-  run_cmd rofi -version || true
-  run_cmd dunst --version || true
-  run_cmd yazi --version || true
-  run_cmd alacritty --version || true
-  run_cmd foot --version || true
-  run_cmd "${BROWSER_APP:-google-chrome-stable}" --version || true
-  if [[ "${ENABLE_FCITX5:-0}" -eq 1 ]]; then
-    run_cmd fcitx5 --version || true
-  fi
 }
 
 ensure_desktop_hyprland() {

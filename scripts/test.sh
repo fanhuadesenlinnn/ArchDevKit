@@ -248,6 +248,24 @@ desktop_helper_output="$(
 [[ "${desktop_helper_output}" == *"write "*"neovide"* ]] || { echo "missing neovide helper"; exit 1; }
 [[ "${desktop_helper_output}" == *"write "*"archdevkit-vmware-user"* ]] || { echo "missing vmware helper"; exit 1; }
 
+echo "==> desktop verify split"
+desktop_verify_output="$(
+  DRY_RUN=1 bash -c '
+    set -Eeuo pipefail
+    SCRIPT_DIR="$PWD"
+    source install_vars
+    DRY_RUN=1
+    source lib/common.sh
+    source modules/desktop/verify.sh
+    ENABLE_FCITX5=1
+    BROWSER_APP=google-chrome-stable
+    verify_hyprland
+  '
+)"
+[[ "${desktop_verify_output}" == *"Hyprland --version"* ]] || { echo "missing Hyprland verify"; exit 1; }
+[[ "${desktop_verify_output}" == *"google-chrome-stable --version"* ]] || { echo "missing browser verify"; exit 1; }
+[[ "${desktop_verify_output}" == *"fcitx5 --version"* ]] || { echo "missing fcitx verify"; exit 1; }
+
 echo "==> doctor json"
 bash install.sh doctor --json | ruby -rjson -e '
   data = JSON.parse(STDIN.read)
