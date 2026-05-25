@@ -202,6 +202,31 @@ desktop_vm_output="$(
 [[ "${desktop_vm_output}" == *"keep VM Hyprland monitor dynamic"* ]] || { echo "missing vm monitor dry-run"; exit 1; }
 [[ "${desktop_vm_output}" == *"enable VM guest agent autostart for vmware"* ]] || { echo "missing vm autostart dry-run"; exit 1; }
 
+echo "==> desktop hyprdots split"
+desktop_hyprdots_output="$(
+  DRY_RUN=1 bash -c '
+    set -Eeuo pipefail
+    SCRIPT_DIR="$PWD"
+    source install_vars
+    DRY_RUN=1
+    source lib/common.sh
+    source lib/files.sh
+    source modules/desktop/hyprdots.sh
+    tmp_home="$(mktemp -d)"
+    trap "rm -rf \"${tmp_home}\"" EXIT
+    HOME="${tmp_home}"
+    HYPRLAND_CONFIG_MODE=template
+    generate_hyprland_config
+    HYPRLAND_CONFIG_MODE=hyprdots
+    HYPRDOTS_CONFIG_MODULES=(hypr waybar)
+    install_hyprdots_config
+  '
+)"
+[[ "${desktop_hyprdots_output}" == *"files/hyprland/hyprland.conf.tpl"* ]] || { echo "missing template render"; exit 1; }
+[[ "${desktop_hyprdots_output}" == *"files/hyprdots/hypr"* ]] || { echo "missing hyprdots module copy"; exit 1; }
+[[ "${desktop_hyprdots_output}" == *"render ArchDevKit overrides"* ]] || { echo "missing hyprdots overrides"; exit 1; }
+[[ "${desktop_hyprdots_output}" == *"link "*"waybar/config -> config_new.jsonc"* ]] || { echo "missing waybar runtime links"; exit 1; }
+
 echo "==> doctor json"
 bash install.sh doctor --json | ruby -rjson -e '
   data = JSON.parse(STDIN.read)
